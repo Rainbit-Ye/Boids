@@ -29,6 +29,17 @@ struct FBVHNode
 };
 
 /**
+ * K 近邻查询结果
+ */
+struct FKNNResult
+{
+	FGuid EntityID;
+	FVector Position;
+	FVector ForwardDir;
+	float DistanceSq = 0.0f;
+};
+
+/**
  * BVH 空间加速结构子系统
  * 每帧重建，用于高效的邻居查询和避障检测
  */
@@ -50,7 +61,7 @@ public:
 	void Clear();
 
 	/** 添加实体到构建缓冲区 */
-	void AddEntity(FGuid EntityID, const FVector& Position);
+	void AddEntity(FGuid EntityID, const FVector& Position, const FVector& ForwardDir);
 
 	/** 从缓冲区构建 BVH 树 */
 	void BuildTree();
@@ -62,6 +73,9 @@ public:
 
 	/** 球体范围查询 —— 非分配版本（写入已有数组） */
 	void QuerySphere(const FVector& Center, float Radius, TArray<FGuid>& OutEntityIDs) const;
+
+	/** K 近邻查询：返回半径内距离最近的 K 个邻居（含位置和朝向） */
+	void QueryKNN(const FVector& Center, float Radius, int32 K, FGuid ExcludeID, TArray<FKNNResult>& OutResults) const;
 
 	/** 点查询：检测指定点附近半径内是否有其他实体（排除自身） */
 	bool HasNeighborInRadius(const FVector& Point, float Radius, FGuid ExcludeID) const;
@@ -98,6 +112,9 @@ protected:
 	/** 递归球体查询 */
 	void QueryRecursive(int32 NodeIdx, const FVector& Center, float RadiusSq, TArray<FGuid>& Out) const;
 
+	/** 递归 KNN 查询 */
+	void QueryKNNRecursive(int32 NodeIdx, const FVector& Center, float RadiusSq, FGuid ExcludeID, TArray<FKNNResult>& Out) const;
+
 	/** 世界物理重叠检测：指定点附近是否有碰撞 */
 	bool IsBlockedByWorld(const FVector& Point, float Radius, ECollisionChannel Channel) const;
 
@@ -115,4 +132,7 @@ private:
 
 	/** 实体位置 */
 	TArray<FVector> EntityPositions;
+
+	/** 实体前向方向（与 EntityPositions 并行） */
+	TArray<FVector> EntityForwardDirs;
 };

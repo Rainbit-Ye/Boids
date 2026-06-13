@@ -27,12 +27,14 @@ void UFishBVHSubsystem::Clear()
 	Nodes.Empty();
 	EntityIDs.Empty();
 	EntityPositions.Empty();
+	EntityForwardDirs.Empty();
 }
 
-void UFishBVHSubsystem::AddEntity(FGuid EntityID, const FVector& Position)
+void UFishBVHSubsystem::AddEntity(FGuid EntityID, const FVector& Position, const FVector& ForwardDir)
 {
 	EntityIDs.Add(EntityID);
 	EntityPositions.Add(Position);
+	EntityForwardDirs.Add(ForwardDir);
 }
 
 void UFishBVHSubsystem::BuildTree()
@@ -98,21 +100,25 @@ int32 UFishBVHSubsystem::BuildRecursive(int32 Start, int32 End)
 		default: break;
 	}
 
-	// 按排序后的顺序重排 EntityIDs 和 EntityPositions
+	// 按排序后的顺序重排 EntityIDs、EntityPositions 和 EntityForwardDirs
 	TArray<FGuid> SortedIDs;
 	TArray<FVector> SortedPos;
+	TArray<FVector> SortedDirs;
 	SortedIDs.Reserve(RangeCount);
 	SortedPos.Reserve(RangeCount);
+	SortedDirs.Reserve(RangeCount);
 	for (int32 Idx : Indices)
 	{
 		SortedIDs.Add(EntityIDs[Idx]);
 		SortedPos.Add(EntityPositions[Idx]);
+		SortedDirs.Add(EntityForwardDirs[Idx]);
 	}
 
 	for (int32 i = 0; i < RangeCount; ++i)
 	{
 		EntityIDs[Start + i] = SortedIDs[i];
 		EntityPositions[Start + i] = SortedPos[i];
+		EntityForwardDirs[Start + i] = SortedDirs[i];
 	}
 
 	// 中位分割
@@ -383,5 +389,64 @@ void UFishBVHSubsystem::QueryRecursive(int32 NodeIdx, const FVector& Center, flo
 	{
 		QueryRecursive(Node.LeftChild, Center, RadiusSq, Out);
 		QueryRecursive(Node.RightChild, Center, RadiusSq, Out);
+	}
+}
+
+void UFishBVHSubsystem::QueryKNN(const FVector& Center, float Radius, int32 K, FGuid ExcludeID, TArray<FKNNResult>& OutResults) const
+{
+	OutResults.Reset();
+	if (Nodes.Num() == 0 || K <= 0)
+	{
+		return;
+	}
+
+	const float RadiusSq = Radius * Radius;
+	QueryKNNRecursive(0, Center, RadiusSq, ExcludeID, OutResults);
+
+	// 按距离升序排列
+	OutResults.Sort([](const FKNNResult& A, const FKNNResult& B)
+	{
+		return A.DistanceSq < B.DistanceSq;
+	});
+
+	// 截取前 K 个
+	if (OutResults.Num() > K)
+	{
+		OutResults.SetNum(K);
+	}
+}
+
+void UFishBVHSubsystem::QueryKNNRecursive(int32 NodeIdx, const FVector& Center, float RadiusSq, FGuid ExcludeID, TArray<FKNNResult>& Out) const
+{
+	const FBVHNode& Node = Nodes[NodeIdx];
+
+	if (Node.Bounds.ComputeSquaredDistanceToPoint(Center) > RadiusSq)
+	{
+		return;
+	}
+
+	if (Node.IsLeaf())
+	{
+		for (int32 i = 0; i < Node.EntityCount; ++i)
+		{
+			const int32 Idx = Node.EntityStart + i;
+			if (EntityIDs[Idx] == ExcludeID) continue;
+
+			const float DistSq = FVector::DistSquared(EntityPositions[Idx], Center);
+			if (DistSq <= RadiusSq)
+			{
+				FKNNResult Result;
+				Result.EntityID = EntityIDs[Idx];
+				Result.Position = EntityPositions[Idx];
+				Result.ForwardDir = EntityForwardDirs[Idx];
+				Result.DistanceSq = DistSq;
+				Out.Add(Result);
+			}
+		}
+	}
+	else
+	{
+		QueryKNNRecursive(Node.LeftChild, Center, RadiusSq, ExcludeID, Out);
+		QueryKNNRecursive(Node.RightChild, Center, RadiusSq, ExcludeID, Out);
 	}
 }

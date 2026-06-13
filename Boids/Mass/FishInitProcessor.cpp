@@ -7,7 +7,6 @@
 #include "MassExecutionContext.h"
 #include "MassCommonFragments.h"
 #include "Engine/World.h"
-#include "MyDemo/Boids/BoidsSubsystem.h"
 
 UFishInitProcessor::UFishInitProcessor()
 {
@@ -29,9 +28,7 @@ void UFishInitProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 {
 	UWorld* World = GetWorld();
 	if (!World) return;
-
-	UBoidsSubsystem* BoidsSubsystem = World->GetSubsystem<UBoidsSubsystem>();
-	if (!BoidsSubsystem) return;
+	
 	
 	FishInitQuery.ForEachEntityChunk(EntityManager, Context, [&](FMassExecutionContext& ChunkCtx)
 	{
@@ -61,8 +58,6 @@ void UFishInitProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 			AlignFrag.NeighborCount = 0;
 
 			FMassEntityHandle Entity = ChunkCtx.GetEntity(i);
-			
-			BoidsSubsystem->AddBoids(Fish.EntityID,Entity);
 		}
 	});
 }

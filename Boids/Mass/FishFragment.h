@@ -61,6 +61,50 @@ public:
 	FFishAlignFragment() {}
 };
 
+/** 凝聚：向邻居中心靠拢 */
+USTRUCT()
+struct FFishCohesionFragment : public FMassFragment
+{
+	GENERATED_BODY()
+
+public:
+	/** 凝聚感知半径 */
+	UPROPERTY(EditAnywhere)
+	float Radius = 600.f;
+
+	/** 参与计算的最多邻居数 */
+	UPROPERTY(EditAnywhere)
+	int32 MaxNeighbors = 8;
+
+	/** 凝聚权重 (0~1) */
+	UPROPERTY(EditAnywhere)
+	float Weight = 0.3f;
+
+	/** 最大转角（度），限制单次朝中心转向的角度上限 */
+	UPROPERTY(EditAnywhere)
+	float MaxTurnAngle = 30.f;
+};
+
+/** 分离：防止鱼重叠或靠太近 */
+USTRUCT()
+struct FFishSeparationFragment : public FMassFragment
+{
+	GENERATED_BODY()
+
+public:
+	/** 分离感知半径，半径内才会产生排斥力 */
+	UPROPERTY(EditAnywhere)
+	float Radius = 150.f;
+
+	/** 排斥力度 (0~1) */
+	UPROPERTY(EditAnywhere)
+	float Strength = 0.5f;
+
+	/** 参与计算的最多邻居数 */
+	UPROPERTY(EditAnywhere)
+	int32 MaxNeighbors = 10;
+};
+
 USTRUCT(BlueprintType)
 struct FFishTag : public FMassTag
 {

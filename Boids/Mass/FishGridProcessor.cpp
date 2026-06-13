@@ -7,7 +7,6 @@
 #include "MassExecutionContext.h"
 #include "MassCommonFragments.h"
 #include "Engine/World.h"
-#include "MyDemo/Boids/BoidsSubsystem.h"
 #include "MyDemo/Boids/FishBVHSubsystem.h"
 
 UFishGridProcessor::UFishGridProcessor()
@@ -32,7 +31,6 @@ void UFishGridProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 {
 	UWorld* World = GetWorld();
 	UFishBVHSubsystem* BVH = World ? World->GetSubsystem<UFishBVHSubsystem>() : nullptr;
-	UBoidsSubsystem* Boids = World ? World->GetSubsystem<UBoidsSubsystem>() : nullptr;
 	if (!BVH || !BVH->IsInitialized()) return;
 
 	// 清空 BVH，准备重建
@@ -47,8 +45,8 @@ void UFishGridProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 		for (int32 i = 0; i < Count; ++i)
 		{
 			const FVector Pos = Transforms[i].GetTransform().GetLocation();
-			BVH->AddEntity(Fishes[i].EntityID, Pos);
-			Boids->ModifyBoids(Fishes[i].EntityID, ChunkCtx.GetEntity(i));
+			const FVector Forward = Fishes[i].ForwardDir.GetSafeNormal();
+			BVH->AddEntity(Fishes[i].EntityID, Pos, Forward);
 		}
 	});
 

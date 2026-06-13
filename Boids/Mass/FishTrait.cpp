@@ -20,6 +20,10 @@ void UFishTrait::BuildTemplate(FMassEntityTemplateBuildContext& BuildContext, co
 	BuildContext.AddFragment<FFishMoveFragment>();
 	// 对齐碎片（邻居鱼平均速度）
 	BuildContext.AddFragment<FFishAlignFragment>();
+	// 凝聚碎片（向邻居中心靠拢）
+	BuildContext.AddFragment<FFishCohesionFragment>();
+	// 分离碎片（排斥靠近的鱼）
+	BuildContext.AddFragment<FFishSeparationFragment>();
 	// 鱼标记Tag，给MoveProcessor匹配查询
 	BuildContext.AddTag<FFishTag>();
 	UE_LOG(LogFish, Log, TEXT("FishTrait::BuildTemplate - Fragments registered"));
