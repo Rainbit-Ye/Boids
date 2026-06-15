@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "BoidsFunction.h"
-#include "MyDemo/Boids/FishBVHSubsystem.h"
+#include "MyDemo/Boids/FishGridSubsystem.h"
 #include "Engine/World.h"
 #include "CollisionQueryParams.h"
 
@@ -17,24 +17,151 @@ static void HashShuffle(TArray<FVector>& Array, uint32 Seed)
 	}
 }
 
-FVector UBoidsFunction::ComputeAlignment(
-	const FVector& Pos,
-	const FVector& Forward,
-	const FGuid& EntityID,
-	float AlignRadius,
-	int32 MaxNeighbors,
-	float Weight,
-	const UObject* WorldContextObject)
+// ==================== 内部 Helper（接收已查询的邻居列表，避免重复 KNN） ====================
+
+static FVector AlignFromNeighbors(const TArray<FKNNResult>& Neighbors, const FVector& Forward,
+	float RadiusSq, int32 MaxNeighbors, float Weight)
+{
+	FVector AvgDir = FVector::ZeroVector;
+	int32 Count = 0;
+	for (const FKNNResult& N : Neighbors)
+	{
+		if (N.DistanceSq > RadiusSq) break;      // 距离升序，超范围则停止
+		if (Count >= MaxNeighbors) break;
+		AvgDir += N.ForwardDir.GetSafeNormal();
+		Count++;
+	}
+	if (Count == 0) return Forward;
+	AvgDir *= 1.f / Count;
+	AvgDir.Normalize();
+	return (Forward * (1.f - Weight) + AvgDir * Weight).GetSafeNormal();
+}
+
+static FVector CohesionFromNeighbors(const TArray<FKNNResult>& Neighbors, const FVector& Pos,
+	const FVector& Forward, float RadiusSq, int32 MaxNeighbors, float Weight, float MaxTurnAngle)
+{
+	FVector CenterOfMass = FVector::ZeroVector;
+	int32 Count = 0;
+	for (const FKNNResult& N : Neighbors)
+	{
+		if (N.DistanceSq > RadiusSq) break;
+		if (Count >= MaxNeighbors) break;
+		CenterOfMass += N.Position;
+		Count++;
+	}
+	if (Count == 0) return Forward;
+	CenterOfMass /= static_cast<float>(Count);
+
+	const FVector ToCenter = CenterOfMass - Pos;
+	const float DistToCenter = ToCenter.Size();
+	if (DistToCenter < 1.f) return Forward;
+
+	const FVector DirToCenter = ToCenter / DistToCenter;
+	const float DotFC = FVector::DotProduct(Forward, DirToCenter);
+	const float AngleRad = FMath::Acos(FMath::Clamp(DotFC, -1.f, 1.f));
+	const float MaxTurnAngleRad = FMath::DegreesToRadians(MaxTurnAngle);
+	const float TurnAngleRad = FMath::Min(AngleRad * Weight, MaxTurnAngleRad);
+	if (TurnAngleRad < 1.745e-3f) return Forward;
+
+	const FVector Cross = FVector::CrossProduct(Forward, DirToCenter);
+	const FVector Axis = Cross.IsNearlyZero()
+		? (FMath::Abs(Forward.Z) < 0.99f
+			? FVector::CrossProduct(Forward, FVector::UpVector).GetSafeNormal()
+			: FVector::CrossProduct(Forward, FVector::RightVector).GetSafeNormal())
+		: Cross.GetSafeNormal();
+	return FQuat(Axis, TurnAngleRad).RotateVector(Forward);
+}
+
+static FVector SeparationFromNeighbors(const TArray<FKNNResult>& Neighbors, const FVector& Pos,
+	const FVector& Forward, float RadiusSq, int32 MaxNeighbors, float Strength)
+{
+	FVector Repulsion = FVector::ZeroVector;
+	const float SepRadius = FMath::Sqrt(RadiusSq);
+	int32 Count = 0;
+	for (const FKNNResult& N : Neighbors)
+	{
+		if (N.DistanceSq > RadiusSq) break;
+		if (Count >= MaxNeighbors) break;
+		Count++;
+
+		const FVector ToNeighbor = N.Position - Pos;
+		const float Dist = FMath::Sqrt(N.DistanceSq);
+		if (Dist < 1.f)
+		{
+			Repulsion += Forward * -1.f;
+			continue;
+		}
+		const float T = FMath::Clamp(Dist / SepRadius, 0.f, 1.f);
+		Repulsion -= ToNeighbor.GetSafeNormal() * (1.f - T);
+	}
+	if (Repulsion.IsNearlyZero()) return Forward;
+	Repulsion.Normalize();
+	return (Forward * (1.f - Strength) + Repulsion * Strength).GetSafeNormal();
+}
+
+// ==================== 合并接口：一次 KNN 完成对齐+凝聚+分离 ====================
+
+void UBoidsFunction::ComputeAllBoidsForces(
+	const UObject* WorldContextObject,
+	const FVector& Pos, const FVector& Forward, const FGuid& EntityID,
+	float AlignRadius, int32 AlignMaxNeighbors, float AlignWeight,
+	float CohesionRadius, int32 CohesionMaxNeighbors, float CohesionWeight, float CohesionMaxTurnAngle,
+	float SepRadius, int32 SepMaxNeighbors, float SepStrength,
+	FVector& OutAlign, FVector& OutCohesion, FVector& OutSeparation)
+{
+	TArray<FKNNResult> Neighbors;
+	ComputeAllBoidsForces(WorldContextObject,
+		Pos, Forward, EntityID,
+		AlignRadius, AlignMaxNeighbors, AlignWeight,
+		CohesionRadius, CohesionMaxNeighbors, CohesionWeight, CohesionMaxTurnAngle,
+		SepRadius, SepMaxNeighbors, SepStrength,
+		OutAlign, OutCohesion, OutSeparation, Neighbors);
+}
+
+void UBoidsFunction::ComputeAllBoidsForces(
+	const UObject* WorldContextObject,
+	const FVector& Pos, const FVector& Forward, const FGuid& EntityID,
+	float AlignRadius, int32 AlignMaxNeighbors, float AlignWeight,
+	float CohesionRadius, int32 CohesionMaxNeighbors, float CohesionWeight, float CohesionMaxTurnAngle,
+	float SepRadius, int32 SepMaxNeighbors, float SepStrength,
+	FVector& OutAlign, FVector& OutCohesion, FVector& OutSeparation,
+	TArray<FKNNResult>& ScratchNeighbors)
 {
 	const UWorld* World = WorldContextObject ? WorldContextObject->GetWorld() : nullptr;
-	const UFishBVHSubsystem* BVH = World ? World->GetSubsystem<UFishBVHSubsystem>() : nullptr;
-	if (!BVH || BVH->GetEntityCount() <= 1)
+	const UFishGridSubsystem* Grid = World ? World->GetSubsystem<UFishGridSubsystem>() : nullptr;
+
+	OutAlign     = Forward;
+	OutCohesion  = Forward;
+	OutSeparation = Forward;
+
+	if (!Grid || Grid->GetEntityCount() <= 1) return;
+
+	// 取三组参数的最大值，一次查够
+	const float MaxRadius = FMath::Max3(AlignRadius, CohesionRadius, SepRadius);
+	const int32 MaxNeighbors = FMath::Max3(AlignMaxNeighbors, CohesionMaxNeighbors, SepMaxNeighbors);
+
+	Grid->QueryKNN(Pos, MaxRadius, MaxNeighbors, EntityID, ScratchNeighbors);
+	if (ScratchNeighbors.Num() == 0) return;
+
+	OutAlign     = AlignFromNeighbors(ScratchNeighbors, Forward, AlignRadius * AlignRadius, AlignMaxNeighbors, AlignWeight);
+	OutCohesion  = CohesionFromNeighbors(ScratchNeighbors, Pos, Forward, CohesionRadius * CohesionRadius, CohesionMaxNeighbors, CohesionWeight, CohesionMaxTurnAngle);
+	OutSeparation = SeparationFromNeighbors(ScratchNeighbors, Pos, Forward, SepRadius * SepRadius, SepMaxNeighbors, SepStrength);
+}
+
+// ==================== 原始单功能接口（保留蓝图兼容性，内部委托给合并接口） ====================
+
+FVector UBoidsFunction::ComputeAlignment(const UObject* WorldContextObject, float Weight, const FGuid& EntityID, const FVector& Forward, int32 MaxNeighbors, const 
+									FVector& Pos, float AlignRadius)
+{
+	const UWorld* World = WorldContextObject ? WorldContextObject->GetWorld() : nullptr;
+	const UFishGridSubsystem* Grid = World ? World->GetSubsystem<UFishGridSubsystem>() : nullptr;
+	if (!Grid || Grid->GetEntityCount() <= 1)
 	{
 		return Forward;
 	}
 
 	TArray<FKNNResult> Neighbors;
-	BVH->QueryKNN(Pos, AlignRadius, MaxNeighbors, EntityID, Neighbors);
+	Grid->QueryKNN(Pos, AlignRadius, MaxNeighbors, EntityID, Neighbors);
 
 	if (Neighbors.Num() == 0)
 	{
@@ -47,32 +174,24 @@ FVector UBoidsFunction::ComputeAlignment(
 	{
 		AvgDir += N.ForwardDir.GetSafeNormal();
 	}
-	AvgDir /= static_cast<float>(Neighbors.Num());
+	AvgDir *= 1.f / Neighbors.Num();
 	AvgDir.Normalize();
 
 	// 自身方向 + 邻居平均方向加权混合
 	return (Forward * (1.0f - Weight) + AvgDir * Weight).GetSafeNormal();
 }
 
-FVector UBoidsFunction::ComputeCohesion(
-	const FVector& Pos,
-	const FVector& Forward,
-	const FGuid& EntityID,
-	float CohesionRadius,
-	int32 MaxNeighbors,
-	float Weight,
-	float MaxTurnAngle,
-	const UObject* WorldContextObject)
+FVector UBoidsFunction::ComputeCohesion(const UObject* WorldContextObject,const FVector& Forward,const FGuid& EntityID,float CohesionRadius,int32 MaxNeighbors,float Weight,float MaxTurnAngle,const FVector& Pos)
 {
 	const UWorld* World = WorldContextObject ? WorldContextObject->GetWorld() : nullptr;
-	const UFishBVHSubsystem* BVH = World ? World->GetSubsystem<UFishBVHSubsystem>() : nullptr;
-	if (!BVH || BVH->GetEntityCount() <= 1)
+	const UFishGridSubsystem* Grid = World ? World->GetSubsystem<UFishGridSubsystem>() : nullptr;
+	if (!Grid || Grid->GetEntityCount() <= 1)
 	{
 		return Forward;
 	}
 
 	TArray<FKNNResult> Neighbors;
-	BVH->QueryKNN(Pos, CohesionRadius, MaxNeighbors, EntityID, Neighbors);
+	Grid->QueryKNN(Pos, CohesionRadius, MaxNeighbors, EntityID, Neighbors);
 
 	if (Neighbors.Num() == 0)
 	{
@@ -96,34 +215,27 @@ FVector UBoidsFunction::ComputeCohesion(
 	}
 	const FVector DirToCenter = ToCenter / DistToCenter;
 
-	// 当前朝向到中心的夹角
+	// 当前朝向到中心的夹角（全程弧度，避免 Deg/Rad 来回转换）
 	const float DotFC = FVector::DotProduct(Forward, DirToCenter);
-	const float Angle = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(DotFC, -1.0f, 1.0f)));
+	const float AngleRad = FMath::Acos(FMath::Clamp(DotFC, -1.0f, 1.0f));
+	const float MaxTurnAngleRad = FMath::DegreesToRadians(MaxTurnAngle);
+	const float TurnAngleRad = FMath::Min(AngleRad * Weight, MaxTurnAngleRad);
 
-	// 实际转角 = min(角度 * 权重, 最大转角)
-	const float TurnAngle = FMath::Min(Angle * Weight, MaxTurnAngle);
-
-	if (TurnAngle < 0.1f)
+	if (TurnAngleRad < 1.745e-3f)  // ≈ 0.1°
 	{
 		return Forward;
 	}
 
 	// 绕垂直于 Forward × DirToCenter 的轴旋转，趋近中心方向
 	const FVector Cross = FVector::CrossProduct(Forward, DirToCenter);
-	FVector Axis;
-	if (Cross.IsNearlyZero())
-	{
+	const FVector Axis = Cross.IsNearlyZero()
 		// 方向平行/反向时 Cross 退化，任取一条垂直于 Forward 的轴
-		Axis = FMath::Abs(Forward.Z) < 0.99f
+		? (FMath::Abs(Forward.Z) < 0.99f
 			? FVector::CrossProduct(Forward, FVector::UpVector).GetSafeNormal()
-			: FVector::CrossProduct(Forward, FVector::RightVector).GetSafeNormal();
-	}
-	else
-	{
-		Axis = Cross.GetSafeNormal();
-	}
+			: FVector::CrossProduct(Forward, FVector::RightVector).GetSafeNormal())
+		: Cross.GetSafeNormal();
 
-	return Forward.RotateAngleAxis(TurnAngle, Axis);
+	return FQuat(Axis, TurnAngleRad).RotateVector(Forward);
 }
 
 FVector UBoidsFunction::ComputeSeparation(
@@ -136,14 +248,14 @@ FVector UBoidsFunction::ComputeSeparation(
 	const UObject* WorldContextObject)
 {
 	const UWorld* World = WorldContextObject ? WorldContextObject->GetWorld() : nullptr;
-	const UFishBVHSubsystem* BVH = World ? World->GetSubsystem<UFishBVHSubsystem>() : nullptr;
-	if (!BVH || BVH->GetEntityCount() <= 1)
+	const UFishGridSubsystem* Grid = World ? World->GetSubsystem<UFishGridSubsystem>() : nullptr;
+	if (!Grid || Grid->GetEntityCount() <= 1)
 	{
 		return Forward;
 	}
 
 	TArray<FKNNResult> Neighbors;
-	BVH->QueryKNN(Pos, SepRadius, MaxNeighbors, EntityID, Neighbors);
+	Grid->QueryKNN(Pos, SepRadius, MaxNeighbors, EntityID, Neighbors);
 
 	if (Neighbors.Num() == 0)
 	{
@@ -194,6 +306,27 @@ FVector UBoidsFunction::ComputeObstacleAvoidanceCone(
 	ECollisionChannel Channel,
 	const UObject* WorldContextObject)
 {
+	TArray<FVector> SampleDirs;
+	return ComputeObstacleAvoidanceCone(Pos, Forward, EntityID,
+		ProbeDistance, AgentRadius, SampleAngles,
+		AzimuthSamples, MaxSteps, SmoothFactor, Channel,
+		WorldContextObject, SampleDirs);
+}
+
+FVector UBoidsFunction::ComputeObstacleAvoidanceCone(
+	const FVector& Pos,
+	const FVector& Forward,
+	const FGuid& EntityID,
+	float ProbeDistance,
+	float AgentRadius,
+	const TArray<float>& SampleAngles,
+	int32 AzimuthSamples,
+	int32 MaxSteps,
+	float SmoothFactor,
+	ECollisionChannel Channel,
+	const UObject* WorldContextObject,
+	TArray<FVector>& ScratchSampleDirs)
+{
 	const UWorld* World = WorldContextObject ? WorldContextObject->GetWorld() : nullptr;
 	if (!World)
 	{
@@ -220,12 +353,12 @@ FVector UBoidsFunction::ComputeObstacleAvoidanceCone(
 		// 正前方被堵 → HitPos / HitNormal 供后续兜底用
 	}
 
-	// ---- 2. 生成锥形采样向量数组 ----
-	TArray<FVector> SampleDirs;
-	SampleDirs.Reserve(SampleAngles.Num() * AzimuthSamples + 1);
+	// ---- 2. 生成锥形采样向量数组（复用外部 ScratchSampleDirs） ----
+	ScratchSampleDirs.Reset();
+	ScratchSampleDirs.Reserve(SampleAngles.Num() * AzimuthSamples + 1);
 
 	// 正前方优先
-	SampleDirs.Add(Fwd);
+	ScratchSampleDirs.Add(Fwd);
 
 	for (float HalfAngleDeg : SampleAngles)
 	{
@@ -248,7 +381,7 @@ FVector UBoidsFunction::ComputeObstacleAvoidanceCone(
 				WorldDir.Normalize();
 				if (!WorldDir.IsNearlyZero())
 				{
-					SampleDirs.Add(WorldDir);
+					ScratchSampleDirs.Add(WorldDir);
 				}
 			}
 		}
@@ -266,7 +399,7 @@ FVector UBoidsFunction::ComputeObstacleAvoidanceCone(
 				WorldDir.Normalize();
 				if (!WorldDir.IsNearlyZero())
 				{
-					SampleDirs.Add(WorldDir);
+					ScratchSampleDirs.Add(WorldDir);
 				}
 			}
 		}
@@ -276,7 +409,7 @@ FVector UBoidsFunction::ComputeObstacleAvoidanceCone(
 	{
 		const uint32 Seed = static_cast<uint32>(
 			EntityID.A ^ EntityID.B ^ EntityID.C ^ EntityID.D);
-		HashShuffle(SampleDirs, Seed);
+		HashShuffle(ScratchSampleDirs, Seed);
 	}
 
 	// ---- 4. 逐方向球体 Sweep，找最小偏角安全方向 ----
@@ -287,10 +420,10 @@ FVector UBoidsFunction::ComputeObstacleAvoidanceCone(
 	FCollisionQueryParams SweepParams;
 	SweepParams.bTraceComplex = false;
 
-	const int32 Steps = FMath::Min(MaxSteps, SampleDirs.Num());
+	const int32 Steps = FMath::Min(MaxSteps, ScratchSampleDirs.Num());
 	for (int32 i = 0; i < Steps; ++i)
 	{
-		const FVector TestDir = SampleDirs[i];
+		const FVector TestDir = ScratchSampleDirs[i];
 
 		FHitResult SweepHit;
 		const FVector TraceEnd = Pos + TestDir * ProbeDistance;

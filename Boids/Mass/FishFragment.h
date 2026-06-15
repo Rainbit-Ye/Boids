@@ -4,6 +4,18 @@
 #include "MassEntityTypes.h"
 #include "FishFragment.generated.h"
 
+USTRUCT()
+struct FFishEntityFragment : public FMassFragment
+{
+	GENERATED_BODY()
+	FGuid EntityID;
+	int32 GridID;
+
+	int32 XGridIdx = 0;
+	int32 YGridIdx = 0;
+	int32 ZGridIdx = 0;
+};
+
 USTRUCT(BlueprintType)
 struct FFishMoveFragment : public FMassFragment
 {
@@ -11,6 +23,7 @@ struct FFishMoveFragment : public FMassFragment
 
 public:
 	FGuid EntityID;
+	
 	float SwimSpeed = 300.f;
 	// 转向lerp速度
 	float TurnLerpSpeed = 0.5;
@@ -93,7 +106,7 @@ public:
 
 	/** 最大转角（度），限制单次朝中心转向的角度上限 */
 	UPROPERTY(EditAnywhere)
-	float MaxTurnAngle = 30.f;
+	float MaxTurnAngle = 180.f;
 };
 
 /** 分离：防止鱼重叠或靠太近 */

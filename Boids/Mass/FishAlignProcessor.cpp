@@ -7,6 +7,7 @@
 #include "MassNavigationFragments.h"
 #include "MassMovementFragments.h"
 #include "Engine/World.h"
+#include "MyDemo/Boids/FishGridSubsystem.h"
 #include "MyDemo/Boids/FunctionLibrary/BoidsFunction.h"
 
 UFishAlignProcessor::UFishAlignProcessor()
@@ -34,6 +35,12 @@ void UFishAlignProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 {
 	UWorld* World = Context.GetWorld();
 	const float DeltaTime = Context.GetDeltaTimeSeconds();
+	UFishGridSubsystem* Grid = World->GetSubsystem<UFishGridSubsystem>();
+
+	// 循环外复用 TArray，避免每鱼每帧堆分配
+	TArray<FKNNResult> ScratchNeighbors;
+	TArray<FVector> ScratchSampleDirs;
+	static const TArray<float> SampleAngles = { 15.f, 30.f, 45.f, 60.f, 90.f, 135.f, 180.f };
 
 	BoidsQuery.ForEachEntityChunk(EntityManager, Context, [&](FMassExecutionContext& ChunkCtx)
 	{
@@ -57,26 +64,26 @@ void UFishAlignProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			const FVector Forward = Fish.ForwardDir.GetSafeNormal();
 			const float SwimSpeed = Fish.SwimSpeed;
 
-			// === Boids 群组行为：对齐 + 凝聚 + 分离，一次性加权混合 ===
-			const FVector AlignTarget = UBoidsFunction::ComputeAlignment(
+			// === Boids 群组行为：一次 KNN 完成 对齐 + 凝聚 + 分离 ===
+			FVector AlignTarget, CohesionTarget, SepTarget;
+			UBoidsFunction::ComputeAllBoidsForces(
+				World,
 				Pos, Forward, Fish.EntityID,
-				Align.Radius, Align.MaxNeighbors, Align.Weight, World);
+				Align.Radius, Align.MaxNeighbors, Align.Weight,
+				Cohesion.Radius, Cohesion.MaxNeighbors, Cohesion.Weight, Cohesion.MaxTurnAngle,
+				Separation.Radius, Separation.MaxNeighbors, Separation.Strength,
+				AlignTarget, CohesionTarget, SepTarget,
+				ScratchNeighbors);
 
-			const FVector CohesionTarget = UBoidsFunction::ComputeCohesion(
-				Pos, Forward, Fish.EntityID,
-				Cohesion.Radius, Cohesion.MaxNeighbors, Cohesion.Weight, Cohesion.MaxTurnAngle, World);
-
-			const FVector SepTarget = UBoidsFunction::ComputeSeparation(
-				Pos, Forward, Fish.EntityID,
-				Separation.Radius, Separation.MaxNeighbors, Separation.Strength, World);
-
-			// 权重：自身惯性 35% + 对齐共识 25% + 凝聚中心 25% + 分离排斥 15%
-			FVector BoidsDir = Forward * 0.35f
-				+ AlignTarget    * 0.25f
-				+ CohesionTarget * 0.25f
-				+ SepTarget      * 0.15f;
-			BoidsDir.Normalize();
-			
+			FVector BoidsDir = Forward;
+			if (Grid->Config)
+			{
+				BoidsDir = Forward * Grid->Config->AvoidWeight
+					+ AlignTarget    * Grid->Config->AlignWeight
+					+ CohesionTarget * Grid->Config->CohesionWeight
+					+ SepTarget      * Grid->Config->SeparationWeight;
+				BoidsDir.Normalize();
+			}
 
 			// === 周期性速度变化：间隔到了就随机切换游速 ===
 			Fish.TimeSinceLastSpeedChange += DeltaTime;
@@ -107,7 +114,6 @@ void UFishAlignProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			FVector SwimDir = FMath::Lerp(Forward, WanderDir, BoidsSmooth).GetSafeNormal();
 
 			// === 避障（锥形视野）：有障碍即时覆盖 SwimDir ===
-			TArray<float> SampleAngles = { 15.f, 30.f, 45.f, 60.f, 90.f, 135.f, 180.f };
 			const FVector AvoidDir = UBoidsFunction::ComputeObstacleAvoidanceCone(
 				Pos, SwimDir, Fish.EntityID,
 				Align.AvoidRadius,      // 探测距离
@@ -117,7 +123,8 @@ void UFishAlignProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				32,                      // 最大采样步数（防死循环）
 				0.5f,                    // 推力平滑系数
 				Align.AvoidCollisionChannel,
-				World);
+				World,
+				ScratchSampleDirs);
 			if (FVector::DotProduct(SwimDir, AvoidDir) < 0.9999f)
 			{
 				SwimDir = AvoidDir;

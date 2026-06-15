@@ -39,6 +39,9 @@ void UFishTrait::BuildTemplate(FMassEntityTemplateBuildContext& BuildContext, co
 	SeparationFragment.Radius = FishRadiusToSeparation;
 	SeparationFragment.MaxNeighbors = NeighborSeparationCount;
 
+	// 鱼实体碎片（记录网格归属）
+	BuildContext.AddFragment<FFishEntityFragment>();
+
 	// 鱼标记Tag，给MoveProcessor匹配查询
 	BuildContext.AddTag<FFishTag>();
 }

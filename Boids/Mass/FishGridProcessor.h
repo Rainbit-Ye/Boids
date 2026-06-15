@@ -7,7 +7,7 @@
 #include "FishGridProcessor.generated.h"
 
 /**
- * BVH 更新处理器：每帧收集所有鱼实体位置，重建 BVH 树供查询
+ * 网格更新处理器：每帧收集所有鱼实体位置，重建均匀网格供查询
  */
 UCLASS()
 class MYDEMO_API UFishGridProcessor : public UMassProcessor

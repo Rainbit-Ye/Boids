@@ -28,8 +28,8 @@ class MYDEMO_API UFishTrait : public UMassEntityTraitBase
 
 	UPROPERTY(EditAnywhere,meta=(Category = "Boids", DisplayName = "邻居参考数量"))
 	int32 NeighborCount = 8;
-	
-	UPROPERTY(EditAnywhere,meta=(Category = "Boids|Align", DisplayName = "对齐规则权重"))
+
+	UPROPERTY(EditAnywhere,meta=(Category = "Boids|Align", DisplayName = "对齐规则自身权重"))
 	float AlignWeight = 0.8;
 	
 	UPROPERTY(EditAnywhere,meta=(Category = "Boids|Align", DisplayName = "对齐感知半径"))
@@ -49,7 +49,6 @@ class MYDEMO_API UFishTrait : public UMassEntityTraitBase
 
 	UPROPERTY(EditAnywhere,meta=(Category = "Boids|Separation", DisplayName = "分离邻居数量"))
 	int32 NeighborSeparationCount = 8;
-
 	
 public:
 	UFishTrait();

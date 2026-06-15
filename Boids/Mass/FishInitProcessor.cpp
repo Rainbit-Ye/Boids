@@ -7,6 +7,7 @@
 #include "MassExecutionContext.h"
 #include "MassCommonFragments.h"
 #include "Engine/World.h"
+#include "MyDemo/Boids/FishGridSubsystem.h"
 
 UFishInitProcessor::UFishInitProcessor()
 {
@@ -20,6 +21,7 @@ void UFishInitProcessor::ConfigureQueries()
 	FishInitQuery.AddRequirement<FTransformFragment>(EMassFragmentAccess::ReadWrite);
 	FishInitQuery.AddRequirement<FFishMoveFragment>(EMassFragmentAccess::ReadWrite);
 	FishInitQuery.AddRequirement<FFishAlignFragment>(EMassFragmentAccess::ReadWrite);
+	FishInitQuery.AddRequirement<FFishEntityFragment>(EMassFragmentAccess::ReadWrite);
 	FishInitQuery.AddTagRequirement<FFishTag>(EMassFragmentPresence::All);
 	FishInitQuery.RegisterWithProcessor(*this);
 }
@@ -28,7 +30,8 @@ void UFishInitProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 {
 	UWorld* World = GetWorld();
 	if (!World) return;
-	
+	UFishGridSubsystem* Grid = World ? World->GetSubsystem<UFishGridSubsystem>() : nullptr;
+	if (!Grid || !Grid->IsInitialized()) return;
 	
 	FishInitQuery.ForEachEntityChunk(EntityManager, Context, [&](FMassExecutionContext& ChunkCtx)
 	{
@@ -36,6 +39,7 @@ void UFishInitProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 		TArrayView<FTransformFragment> Transforms = ChunkCtx.GetMutableFragmentView<FTransformFragment>();
 		TArrayView<FFishMoveFragment> Fishes = ChunkCtx.GetMutableFragmentView<FFishMoveFragment>();
 		TArrayView<FFishAlignFragment> Aligns = ChunkCtx.GetMutableFragmentView<FFishAlignFragment>();
+		TArrayView<FFishEntityFragment> EntityFrags = ChunkCtx.GetMutableFragmentView<FFishEntityFragment>();
 
 		for (int i = 0; i < FishCount; i++)
 		{
@@ -50,15 +54,18 @@ void UFishInitProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 			FFishMoveFragment& Fish = Fishes[i];
 			Fish.TimeSinceLastDirChange = FMath::RandRange(3.f, 10.f);
 			Fish.ForwardDir = InitQuat.GetRightVector();
-			Fish.SwimSpeed = FMath::RandRange(150.f,Fish.SwimSpeed);
+			Fish.SwimSpeed = Fish.SwimSpeed * FMath::FRandRange(0.7f, 1.3f);
 			Fish.EntityID = FGuid::NewGuid();
+
+			// 实体碎片：GridID 初始为 -1，等待 GridProcessor 填写
+			FFishEntityFragment& EntityFrag = EntityFrags[i];
+			EntityFrag.EntityID = Fish.EntityID;
+			EntityFrag.GridID = -1;
 
 			// 对齐碎片：计算结果清零
 			FFishAlignFragment& AlignFrag = Aligns[i];
 			AlignFrag.AlignmentForce = FVector::ZeroVector;
 			AlignFrag.NeighborCount = 0;
-
-			FMassEntityHandle Entity = ChunkCtx.GetEntity(i);
 		}
 	});
 }
