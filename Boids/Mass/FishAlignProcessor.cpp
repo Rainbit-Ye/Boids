@@ -37,6 +37,7 @@ void UFishAlignProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 
 	BoidsQuery.ForEachEntityChunk(EntityManager, Context, [&](FMassExecutionContext& ChunkCtx)
 	{
+		
 		const int32 Count = ChunkCtx.GetNumEntities();
 		TArrayView<FTransformFragment> Transforms = ChunkCtx.GetMutableFragmentView<FTransformFragment>();
 		TArrayView<FFishMoveFragment> Fishes = ChunkCtx.GetMutableFragmentView<FFishMoveFragment>();
@@ -75,7 +76,21 @@ void UFishAlignProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				+ CohesionTarget * 0.25f
 				+ SepTarget      * 0.15f;
 			BoidsDir.Normalize();
+			
 
+			// === 周期性速度变化：间隔到了就随机切换游速 ===
+			Fish.TimeSinceLastSpeedChange += DeltaTime;
+			if (Fish.TimeSinceLastSpeedChange >= Fish.SpeedChangeInterval)
+			{
+				Fish.TimeSinceLastSpeedChange = 0.f;
+				// 用 EntityID 哈希生成每鱼独立的随机种子
+				const uint32 Seed = static_cast<uint32>(Fish.EntityID.A ^ Fish.EntityID.B ^ Fish.EntityID.C ^ Fish.EntityID.D);
+				const float Hash = FMath::Frac(static_cast<float>(Seed) * 0.0001f);
+				Fish.SwimSpeed = FMath::Lerp(Fish.MinSwimSpeed, Fish.MaxSwimSpeed, Hash * static_cast<float>((Seed >> 16) & 0xFFFF) / 65535.0f);
+				Fish.SwimSpeed = FMath::Clamp(Fish.SwimSpeed, Fish.MinSwimSpeed, Fish.MaxSwimSpeed);
+			}
+
+			
 			// === 个体游荡：每帧微调角度 ±10°，打散过于一致的方向 ===
 			Fish.TimeSinceLastDirChange += DeltaTime;
 			const float WanderPhase = static_cast<float>(Fish.EntityID.A ^ Fish.EntityID.D) / 65535.0f * UE_PI * 2.0f;
@@ -88,11 +103,21 @@ void UFishAlignProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 
 			// Boids 行为平滑（防抖），避障不参与
 			const float BoidsSmooth = FMath::Min(DeltaTime * 4.0f, 0.4f);
+			//FVector SwimDir = Forward;
 			FVector SwimDir = FMath::Lerp(Forward, WanderDir, BoidsSmooth).GetSafeNormal();
 
-			// === 避障独立：传入 Boids 后的方向，有障碍即时覆盖 ===
-			const FVector AvoidDir = UBoidsFunction::ComputeObstacleAvoidance(
-				Pos, SwimDir, Fish.EntityID, Align.AvoidRadius, Align.AvoidCollisionChannel, World);
+			// === 避障（锥形视野）：有障碍即时覆盖 SwimDir ===
+			TArray<float> SampleAngles = { 15.f, 30.f, 45.f, 60.f, 90.f, 135.f, 180.f };
+			const FVector AvoidDir = UBoidsFunction::ComputeObstacleAvoidanceCone(
+				Pos, SwimDir, Fish.EntityID,
+				Align.AvoidRadius,      // 探测距离
+				50.f,                    // 实体半径（球体 Sweep 半径）
+				SampleAngles,            // 锥形采样半角数组
+				8,                       // 每环方位采样数
+				32,                      // 最大采样步数（防死循环）
+				0.5f,                    // 推力平滑系数
+				Align.AvoidCollisionChannel,
+				World);
 			if (FVector::DotProduct(SwimDir, AvoidDir) < 0.9999f)
 			{
 				SwimDir = AvoidDir;
@@ -100,13 +125,22 @@ void UFishAlignProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 
 			Fish.ForwardDir = SwimDir;
 
-			// 平滑旋转
+			// 水平修正：抑制 Z 轴漂移，避免鱼持续向上/下游
+			const float AbsZ = FMath::Abs(SwimDir.Z);
+			if (AbsZ > 0.05f)
+			{
+				SwimDir.Z *= 1.f - FMath::Min(AbsZ * 0.3f, 0.4f);
+				SwimDir.Normalize();
+			}
+
+			// 平滑旋转：+90°Yaw 抵消 Mass SkeletalMesh 内置的 FromEngineToSM(-90°)
 			const FQuat CurrentRot = XForm.GetRotation();
-			const FQuat TargetRot = SwimDir.ToOrientationQuat();
-			const float RotSmoothFactor = FMath::Min(2.5f * DeltaTime, 1.f);
-			const FQuat NewRot = FQuat::Slerp(CurrentRot, TargetRot, RotSmoothFactor);
+			const FQuat MeshFix = FQuat(FVector::UpVector, HALF_PI);
+			const FQuat TargetRot = MeshFix * SwimDir.Rotation().Quaternion();
+			const FQuat NewRot = FQuat::Slerp(CurrentRot, TargetRot, Fish.TurnLerpSpeed);
 			XForm.SetRotation(NewRot);
 			XForm.SetLocation(Pos + SwimDir * SwimSpeed * DeltaTime);
+			
 
 		}
 	});

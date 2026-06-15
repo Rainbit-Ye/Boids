@@ -98,6 +98,12 @@ public:
 	/** 同上 + 物理：实体和世界几何体中挑最近的 */
 	bool FindNearestInRadius(const FVector& Point, float Radius, FGuid ExcludeID, ECollisionChannel PhysicsChannel, FGuid& OutNearest, FVector& OutPosition) const;
 
+	/** 世界物理重叠检测：指定点附近是否有碰撞（仅检测世界几何，不检测鱼） */
+	bool IsBlockedByWorld(const FVector& Point, float Radius, ECollisionChannel Channel) const;
+
+	/** 世界物理重叠检测，返回碰撞位置 */
+	bool IsBlockedByWorld(const FVector& Point, float Radius, ECollisionChannel Channel, FVector& OutHitPos) const;
+
 	// ---- 调试 ----
 	UFUNCTION(BlueprintCallable)
 	int32 GetNodeCount() const { return Nodes.Num(); }
@@ -114,12 +120,6 @@ protected:
 
 	/** 递归 KNN 查询 */
 	void QueryKNNRecursive(int32 NodeIdx, const FVector& Center, float RadiusSq, FGuid ExcludeID, TArray<FKNNResult>& Out) const;
-
-	/** 世界物理重叠检测：指定点附近是否有碰撞 */
-	bool IsBlockedByWorld(const FVector& Point, float Radius, ECollisionChannel Channel) const;
-
-	/** 世界物理重叠检测，返回碰撞位置 */
-	bool IsBlockedByWorld(const FVector& Point, float Radius, ECollisionChannel Channel, FVector& OutHitPos) const;
 
 private:
 	bool bInitialized = false;

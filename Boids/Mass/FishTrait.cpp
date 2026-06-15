@@ -14,17 +14,31 @@ UFishTrait::UFishTrait()
 
 void UFishTrait::BuildTemplate(FMassEntityTemplateBuildContext& BuildContext, const UWorld& World) const
 {
-	// 核心：必须添加 TransformFragment，否则实体没有位置/旋转
-	BuildContext.AddFragment<FTransformFragment>();
-	// 鱼游动自定义数据碎片
-	BuildContext.AddFragment<FFishMoveFragment>();
+	// 鱼游动自定义数据碎片，用 Trait 参数初始化
+	FFishMoveFragment& MoveFragment = BuildContext.AddFragment_GetRef<FFishMoveFragment>();
+	MoveFragment.SwimSpeed = FishSpeed;
+	MoveFragment.TurnLerpSpeed = LerpSpeed;
+	MoveFragment.SpeedChangeInterval = SpeedChangeInterval;
+	MoveFragment.MinSwimSpeed = MinSpeed;
+	MoveFragment.MaxSwimSpeed = MaxSpeed;
+
 	// 对齐碎片（邻居鱼平均速度）
-	BuildContext.AddFragment<FFishAlignFragment>();
+	FFishAlignFragment& AlignFragment = BuildContext.AddFragment_GetRef<FFishAlignFragment>();
+	AlignFragment.Radius = FishRadiusToAlign;
+	AlignFragment.MaxNeighbors = NeighborCount;
+	AlignFragment.Weight = AlignWeight;
+
 	// 凝聚碎片（向邻居中心靠拢）
-	BuildContext.AddFragment<FFishCohesionFragment>();
+	FFishCohesionFragment& CohesionFragment = BuildContext.AddFragment_GetRef<FFishCohesionFragment>();
+	CohesionFragment.Radius = FishRadiusToCohesion;
+	CohesionFragment.MaxNeighbors = NeighborCohesionCount;
+	CohesionFragment.Weight = CohesionWeight;
+
 	// 分离碎片（排斥靠近的鱼）
-	BuildContext.AddFragment<FFishSeparationFragment>();
+	FFishSeparationFragment& SeparationFragment = BuildContext.AddFragment_GetRef<FFishSeparationFragment>();
+	SeparationFragment.Radius = FishRadiusToSeparation;
+	SeparationFragment.MaxNeighbors = NeighborSeparationCount;
+
 	// 鱼标记Tag，给MoveProcessor匹配查询
 	BuildContext.AddTag<FFishTag>();
-	UE_LOG(LogFish, Log, TEXT("FishTrait::BuildTemplate - Fragments registered"));
 }

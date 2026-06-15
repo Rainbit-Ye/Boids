@@ -13,26 +13,6 @@ class MYDEMO_API UBoidsFunction : public UBlueprintFunctionLibrary
 
 public:
 	/**
-	 * 计算避障后的新前进方向，BVH 从 WorldContextObject 的 World 中自动获取
-	 * @param Pos				鱼当前位置
-	 * @param Forward			鱼当前朝向（单位向量）
-	 * @param EntityID			鱼实体 ID，用于排除自身和确定性相位偏移
-	 * @param AvoidRadius		避障检测半径
-	 * @param PhysChannel		世界物理碰撞通道
-	 * @param WorldContextObject	世界上下文对象，用于获取 BVH 子系统
-	 * @return 避开障碍后的前进方向，未检测到障碍 / BVH 无效时返回 Forward
-	 */
-	UFUNCTION(BlueprintCallable)
-	static FVector ComputeObstacleAvoidance(
-		const FVector& Pos,
-		const FVector& Forward,
-		const FGuid& EntityID,
-		float AvoidRadius,
-		ECollisionChannel PhysChannel,
-		const UObject* WorldContextObject
-	);
-
-	/**
 	 * 鱼群对齐：获取半径内最近的 MaxNeighbors 条邻居，将自身方向与邻居平均方向混合
 	 * @param Pos				鱼当前位置
 	 * @param Forward			鱼当前朝向（单位向量）
@@ -97,6 +77,35 @@ public:
 		float SepRadius,
 		int32 MaxNeighbors,
 		float Strength,
+		const UObject* WorldContextObject
+	);
+
+	/**
+	 * 锥形视野避障：以 Forward 为中轴生成采样向量 → ID哈希打乱 → Sweep → 最小偏角安全方向
+	 * @param Pos				实体当前位置
+	 * @param Forward			实体当前朝向（单位向量）
+	 * @param EntityID			实体 ID，用于哈希打乱采样顺序，避免集群鱼挤向同一侧
+	 * @param ProbeDistance		探测距离（Sweep 终点 = Pos + 方向 × 探测距离）
+	 * @param AgentRadius		球体 Sweep 半径
+	 * @param SampleAngles		锥形采样半角数组（度），如 {15,30,45,60,90,135,180}
+	 * @param AzimuthSamples	每环方位采样数
+	 * @param MaxSteps			最大采样步数（防死循环）
+	 * @param SmoothFactor		推力平滑系数 (0~1)
+	 * @param Channel			碰撞通道
+	 * @param WorldContextObject	世界上下文对象
+	 * @return 避障后方向
+	 */
+	static FVector ComputeObstacleAvoidanceCone(
+		const FVector& Pos,
+		const FVector& Forward,
+		const FGuid& EntityID,
+		float ProbeDistance,
+		float AgentRadius,
+		const TArray<float>& SampleAngles,
+		int32 AzimuthSamples,
+		int32 MaxSteps,
+		float SmoothFactor,
+		ECollisionChannel Channel,
 		const UObject* WorldContextObject
 	);
 };

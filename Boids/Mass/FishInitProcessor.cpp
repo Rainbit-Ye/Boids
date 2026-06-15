@@ -49,7 +49,8 @@ void UFishInitProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 
 			FFishMoveFragment& Fish = Fishes[i];
 			Fish.TimeSinceLastDirChange = FMath::RandRange(3.f, 10.f);
-			Fish.ForwardDir = InitQuat.GetForwardVector();
+			Fish.ForwardDir = InitQuat.GetRightVector();
+			Fish.SwimSpeed = FMath::RandRange(150.f,Fish.SwimSpeed);
 			Fish.EntityID = FGuid::NewGuid();
 
 			// 对齐碎片：计算结果清零

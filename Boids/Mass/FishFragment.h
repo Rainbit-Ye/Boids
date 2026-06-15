@@ -22,7 +22,18 @@ public:
 	float MaxTurnAngle = 180;
 
 	FVector ForwardDir = FVector::ZeroVector;
-	
+
+	/** 距离上次速度变化已经过的时间 */
+	float TimeSinceLastSpeedChange = 0.f;
+
+	/** 速度变化间隔（秒），周期性随机切换游速 */
+	float SpeedChangeInterval = 5.f;
+
+	/** 最低游动速度 */
+	float MinSwimSpeed = 150.f;
+
+	/** 最高游动速度 */
+	float MaxSwimSpeed = 500.f;
 
 public:
 };
@@ -51,8 +62,8 @@ public:
 	/** 参与计算的邻居数量 */
 	int32 NeighborCount = 0;
 	
-	/** 检测球体半径 */
-	float AvoidRadius = 80.f;
+	/** 避障检测距离（前方多远开始检测障碍物） */
+	float AvoidRadius = 300.f;
 
 	/** 世界物理碰撞通道（用于检测静态环境障碍） */
 	TEnumAsByte<ECollisionChannel> AvoidCollisionChannel = ECC_WorldStatic;
