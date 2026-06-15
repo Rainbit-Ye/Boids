@@ -40,7 +40,7 @@ void UFishAlignProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	// 循环外复用 TArray，避免每鱼每帧堆分配
 	TArray<FKNNResult> ScratchNeighbors;
 	TArray<FVector> ScratchSampleDirs;
-	static const TArray<float> SampleAngles = { 15.f, 30.f, 45.f, 60.f, 90.f, 135.f, 180.f };
+	static const TArray<float> SampleAngles = { 15.f, 30.f, 45.f, 60.f, 90.f};
 
 	BoidsQuery.ForEachEntityChunk(EntityManager, Context, [&](FMassExecutionContext& ChunkCtx)
 	{

@@ -76,7 +76,7 @@ public:
 	int32 NeighborCount = 0;
 	
 	/** 避障检测距离（前方多远开始检测障碍物） */
-	float AvoidRadius = 300.f;
+	float AvoidRadius = 100.f;
 
 	/** 世界物理碰撞通道（用于检测静态环境障碍） */
 	TEnumAsByte<ECollisionChannel> AvoidCollisionChannel = ECC_WorldStatic;

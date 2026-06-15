@@ -25,17 +25,17 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Grid")
 	float CellSize = 600.f;
 
-	UPROPERTY(EditAnywhere, Category = "Grid")
-	float AlignWeight = .3f;
-	
-	UPROPERTY(EditAnywhere, Category = "Grid")
-	float CohesionWeight = .3f;
-	
-	UPROPERTY(EditAnywhere, Category = "Grid")
-	float SeparationWeight = .1f;
-	
-	UPROPERTY(EditAnywhere, Category = "Grid")
-	float AvoidWeight = .3f;
+	UPROPERTY(EditAnywhere, Category = "Boids", meta = (DisplayName = "对齐权重（匹配邻居方向）"))
+	float AlignWeight = 0.35f;
+
+	UPROPERTY(EditAnywhere, Category = "Boids", meta = (DisplayName = "凝聚权重（向邻居中心靠拢）"))
+	float CohesionWeight = 0.25f;
+
+	UPROPERTY(EditAnywhere, Category = "Boids", meta = (DisplayName = "分离权重（推开重叠的鱼）"))
+	float SeparationWeight = 0.25f;
+
+	UPROPERTY(EditAnywhere, Category = "Boids", meta = (DisplayName = "惯性权重（保持当前朝向）"))
+	float AvoidWeight = 0.15f;
 
 	
 };
