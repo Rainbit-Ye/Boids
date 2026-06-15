@@ -8,7 +8,7 @@
 #include "Engine/StreamableManager.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogGrid, Log, All);
-/** 3x3x3 邻居偏移量 */
+/** 3x3x3 邻居偏移量 — 保证 CellSize ≥ 搜索半径时球体查询不遗漏对角方向的实体 */
 static const FIntVector GNeighbors[27] =
 {
 	{-1,-1,-1}, {-1,-1,0}, {-1,-1,1},
