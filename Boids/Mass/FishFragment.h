@@ -4,6 +4,46 @@
 #include "MassEntityTypes.h"
 #include "FishFragment.generated.h"
 
+// ============================================================
+// Shared Fragment — chunk 内所有鱼共享的静态配置参数
+// ============================================================
+USTRUCT()
+struct FFishBoidConfigSharedFragment : public FMassSharedFragment
+{
+	GENERATED_BODY()
+
+	// ----- Move 配置 -----
+	float InitialSwimSpeed = 300.f;
+	float TurnLerpSpeed = 0.5f;       // 转向插值速度
+	float SpeedChangeInterval = 5.f;  // 速度变化间隔
+	float MinSwimSpeed = 150.f;
+	float MaxSwimSpeed = 500.f;
+	float FreezeDistance = 5000.f;    // 冻结距离
+
+	// ----- Align 配置 -----
+	float AlignRadius = 500.f;
+	int32 AlignMaxNeighbors = 5;
+	float AlignWeight = 0.8f;
+	float MaxSteeringForce = 300.f;
+	float AvoidRadius = 100.f;
+	TEnumAsByte<ECollisionChannel> AvoidCollisionChannel = ECC_WorldStatic;
+
+	// ----- Cohesion 配置 -----
+	float CohesionRadius = 600.f;
+	int32 CohesionMaxNeighbors = 8;
+	float CohesionWeight = 0.3f;
+	float CohesionMaxTurnAngle = 180.f;
+
+	// ----- Separation 配置 -----
+	float SeparationRadius = 150.f;
+	float SeparationStrength = 0.5f;
+	int32 SeparationMaxNeighbors = 10;
+};
+
+// ============================================================
+// Per-Entity Fragments — 每只鱼自己独有的运行时数据
+// ============================================================
+
 USTRUCT()
 struct FFishEntityFragment : public FMassFragment
 {
@@ -23,38 +63,11 @@ struct FFishMoveFragment : public FMassFragment
 
 public:
 	FGuid EntityID;
-	
-	float SwimSpeed = 300.f;
-	// 转向lerp速度
-	float TurnLerpSpeed = 0.5;
-	// 距离上次切换已经过的时间
-	float TimeSinceLastDirChange = 0.f;
-	// 切换方向时间间隔
-	float DirectionChangeInterval = 7.f;
-	// 最大转向角度
-	float MaxTurnAngle = 180;
-
-	FVector ForwardDir = FVector::ZeroVector;
-
-	/** 距离上次速度变化已经过的时间 */
-	float TimeSinceLastSpeedChange = 0.f;
-
-	/** 速度变化间隔（秒），周期性随机切换游速 */
-	float SpeedChangeInterval = 5.f;
-
-	/** 最低游动速度 */
-	float MinSwimSpeed = 150.f;
-
-	/** 最高游动速度 */
-	float MaxSwimSpeed = 500.f;
-
-	/** 是否冻结（不可见或超出冻结距离时停止游动） */
-	bool bIsFrozen = false;
-
-	/** 距离玩家Pawn的冻结距离（cm），超出此距离停止更新 */
-	float FreezeDistance = 5000.f;
-
-public:
+	float SwimSpeed = 300.f;                  // 运行时游速（每鱼随机）
+	float TimeSinceLastDirChange = 0.f;       // 距离上次转向已过的秒数
+	FVector ForwardDir = FVector::ZeroVector; // 当前朝向
+	float TimeSinceLastSpeedChange = 0.f;     // 距离上次变速已过的秒数
+	bool bIsFrozen = false;                   // 是否冻结
 };
 
 USTRUCT()
@@ -63,76 +76,11 @@ struct FFishAlignFragment : public FMassFragment
 	GENERATED_BODY()
 
 public:
-	/** 对齐感知半径 */
-	float Radius = 500.f;
-
-	/** 最多取多少条邻居参与计算 */
-	int32 MaxNeighbors = 5;
-
-	/** 对齐权重 (0~1，控制对齐影响力的强度) */
-	float Weight = 0.8f;
-
-	/** 最大转向力大小 */
-	float MaxSteeringForce = 300.f;
-
-	/** 计算结果：对齐力矢量 */
-	FVector AlignmentForce = FVector::ZeroVector;
-	
-	/** 参与计算的邻居数量 */
-	int32 NeighborCount = 0;
-	
-	/** 避障检测距离（前方多远开始检测障碍物） */
-	float AvoidRadius = 100.f;
-
-	/** 世界物理碰撞通道（用于检测静态环境障碍） */
-	TEnumAsByte<ECollisionChannel> AvoidCollisionChannel = ECC_WorldStatic;
+	FVector AlignmentForce = FVector::ZeroVector; // 计算结果：对齐力
+	int32 NeighborCount = 0;                       // 参与邻居数
 
 public:
 	FFishAlignFragment() {}
-};
-
-/** 凝聚：向邻居中心靠拢 */
-USTRUCT()
-struct FFishCohesionFragment : public FMassFragment
-{
-	GENERATED_BODY()
-
-public:
-	/** 凝聚感知半径 */
-	UPROPERTY(EditAnywhere)
-	float Radius = 600.f;
-
-	/** 参与计算的最多邻居数 */
-	UPROPERTY(EditAnywhere)
-	int32 MaxNeighbors = 8;
-
-	/** 凝聚权重 (0~1) */
-	UPROPERTY(EditAnywhere)
-	float Weight = 0.3f;
-
-	/** 最大转角（度），限制单次朝中心转向的角度上限 */
-	UPROPERTY(EditAnywhere)
-	float MaxTurnAngle = 180.f;
-};
-
-/** 分离：防止鱼重叠或靠太近 */
-USTRUCT()
-struct FFishSeparationFragment : public FMassFragment
-{
-	GENERATED_BODY()
-
-public:
-	/** 分离感知半径，半径内才会产生排斥力 */
-	UPROPERTY(EditAnywhere)
-	float Radius = 150.f;
-
-	/** 排斥力度 (0~1) */
-	UPROPERTY(EditAnywhere)
-	float Strength = 0.5f;
-
-	/** 参与计算的最多邻居数 */
-	UPROPERTY(EditAnywhere)
-	int32 MaxNeighbors = 10;
 };
 
 USTRUCT(BlueprintType)

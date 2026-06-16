@@ -2,6 +2,7 @@
 #include "FishFragment.h"
 #include "MassCommonFragments.h"
 #include "MassEntityTemplateRegistry.h"
+#include "MassEntityUtils.h"
 #include "MassMovementFragments.h"
 #include "MassNavigationFragments.h"
 
@@ -14,35 +15,36 @@ UFishTrait::UFishTrait()
 
 void UFishTrait::BuildTemplate(FMassEntityTemplateBuildContext& BuildContext, const UWorld& World) const
 {
-	// 鱼游动自定义数据碎片，用 Trait 参数初始化
+	// === Shared Fragment：所有鱼共享的静态配置（一个 Chunk 只存一份）===
+	FMassEntityManager& EntityManager = UE::Mass::Utils::GetEntityManagerChecked(World);
+
+	FFishBoidConfigSharedFragment ConfigData;
+	ConfigData.InitialSwimSpeed       = FishSpeed;
+	ConfigData.TurnLerpSpeed          = LerpSpeed;
+	ConfigData.SpeedChangeInterval    = SpeedChangeInterval;
+	ConfigData.MinSwimSpeed           = MinSpeed;
+	ConfigData.MaxSwimSpeed           = MaxSpeed;
+	ConfigData.FreezeDistance         = FreezeDistance;
+	ConfigData.AlignRadius            = FishRadiusToAlign;
+	ConfigData.AlignMaxNeighbors      = NeighborCount;
+	ConfigData.AlignWeight            = AlignWeight;
+	ConfigData.CohesionRadius         = FishRadiusToCohesion;
+	ConfigData.CohesionMaxNeighbors   = NeighborCohesionCount;
+	ConfigData.CohesionWeight         = CohesionWeight;
+	ConfigData.SeparationRadius       = FishRadiusToSeparation;
+	ConfigData.SeparationMaxNeighbors = NeighborSeparationCount;
+
+	const uint32 ConfigHash = UE::StructUtils::GetStructCrc32(FConstStructView::Make(ConfigData));
+	FSharedStruct SharedConfig = EntityManager.GetOrCreateSharedFragmentByHash<FFishBoidConfigSharedFragment>(ConfigHash, ConfigData);
+	BuildContext.AddSharedFragment(SharedConfig);
+
+	// === Per-Entity Fragments：只保留运行时状态 ===
 	FFishMoveFragment& MoveFragment = BuildContext.AddFragment_GetRef<FFishMoveFragment>();
-	MoveFragment.SwimSpeed = FishSpeed;
-	MoveFragment.TurnLerpSpeed = LerpSpeed;
-	MoveFragment.SpeedChangeInterval = SpeedChangeInterval;
-	MoveFragment.MinSwimSpeed = MinSpeed;
-	MoveFragment.MaxSwimSpeed = MaxSpeed;
-	MoveFragment.FreezeDistance = FreezeDistance;
+	MoveFragment.SwimSpeed = FishSpeed; // 初始值，InitProcessor 随机化
 
-	// 对齐碎片（邻居鱼平均速度）
-	FFishAlignFragment& AlignFragment = BuildContext.AddFragment_GetRef<FFishAlignFragment>();
-	AlignFragment.Radius = FishRadiusToAlign;
-	AlignFragment.MaxNeighbors = NeighborCount;
-	AlignFragment.Weight = AlignWeight;
+	BuildContext.AddFragment<FFishAlignFragment>();      // AlignmentForce + NeighborCount
+	BuildContext.AddFragment<FFishEntityFragment>();     // Grid归属
 
-	// 凝聚碎片（向邻居中心靠拢）
-	FFishCohesionFragment& CohesionFragment = BuildContext.AddFragment_GetRef<FFishCohesionFragment>();
-	CohesionFragment.Radius = FishRadiusToCohesion;
-	CohesionFragment.MaxNeighbors = NeighborCohesionCount;
-	CohesionFragment.Weight = CohesionWeight;
-
-	// 分离碎片（排斥靠近的鱼）
-	FFishSeparationFragment& SeparationFragment = BuildContext.AddFragment_GetRef<FFishSeparationFragment>();
-	SeparationFragment.Radius = FishRadiusToSeparation;
-	SeparationFragment.MaxNeighbors = NeighborSeparationCount;
-
-	// 鱼实体碎片（记录网格归属）
-	BuildContext.AddFragment<FFishEntityFragment>();
-
-	// 鱼标记Tag，给MoveProcessor匹配查询
+	// 鱼标记Tag，用于各Processor查询匹配
 	BuildContext.AddTag<FFishTag>();
 }

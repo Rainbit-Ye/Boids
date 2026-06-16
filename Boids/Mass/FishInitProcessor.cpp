@@ -22,6 +22,7 @@ void UFishInitProcessor::ConfigureQueries()
 	FishInitQuery.AddRequirement<FFishMoveFragment>(EMassFragmentAccess::ReadWrite);
 	FishInitQuery.AddRequirement<FFishAlignFragment>(EMassFragmentAccess::ReadWrite);
 	FishInitQuery.AddRequirement<FFishEntityFragment>(EMassFragmentAccess::ReadWrite);
+	FishInitQuery.AddSharedRequirement<FFishBoidConfigSharedFragment>(EMassFragmentAccess::ReadOnly);
 	FishInitQuery.AddTagRequirement<FFishTag>(EMassFragmentPresence::All);
 	FishInitQuery.RegisterWithProcessor(*this);
 }
@@ -35,6 +36,8 @@ void UFishInitProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 	
 	FishInitQuery.ForEachEntityChunk(EntityManager, Context, [&](FMassExecutionContext& ChunkCtx)
 	{
+		const FFishBoidConfigSharedFragment& Config = ChunkCtx.GetSharedFragment<FFishBoidConfigSharedFragment>();
+
 		const int32 FishCount = ChunkCtx.GetNumEntities();
 		TArrayView<FTransformFragment> Transforms = ChunkCtx.GetMutableFragmentView<FTransformFragment>();
 		TArrayView<FFishMoveFragment> Fishes = ChunkCtx.GetMutableFragmentView<FFishMoveFragment>();
@@ -54,7 +57,7 @@ void UFishInitProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 			FFishMoveFragment& Fish = Fishes[i];
 			Fish.TimeSinceLastDirChange = FMath::RandRange(3.f, 10.f);
 			Fish.ForwardDir = InitQuat.GetRightVector();
-			Fish.SwimSpeed = Fish.SwimSpeed * FMath::FRandRange(0.7f, 1.3f);
+			Fish.SwimSpeed = Config.InitialSwimSpeed * FMath::FRandRange(0.7f, 1.3f);
 			Fish.EntityID = FGuid::NewGuid();
 
 			// 实体碎片：GridID 初始为 -1，等待 GridProcessor 填写
