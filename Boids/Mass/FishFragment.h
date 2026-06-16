@@ -48,6 +48,12 @@ public:
 	/** 最高游动速度 */
 	float MaxSwimSpeed = 500.f;
 
+	/** 是否冻结（不可见或超出冻结距离时停止游动） */
+	bool bIsFrozen = false;
+
+	/** 距离玩家Pawn的冻结距离（cm），超出此距离停止更新 */
+	float FreezeDistance = 5000.f;
+
 public:
 };
 

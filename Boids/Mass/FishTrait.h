@@ -49,6 +49,9 @@ class MYDEMO_API UFishTrait : public UMassEntityTraitBase
 
 	UPROPERTY(EditAnywhere,meta=(Category = "Boids|Separation", DisplayName = "分离邻居数量"))
 	int32 NeighborSeparationCount = 8;
+
+	UPROPERTY(EditAnywhere,meta=(Category = "Boids|LOD", DisplayName = "冻结距离（距离玩家Pawn多远后停止更新，cm）"))
+	float FreezeDistance = 5000.f;
 	
 public:
 	UFishTrait();

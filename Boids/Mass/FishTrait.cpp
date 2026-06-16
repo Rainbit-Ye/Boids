@@ -21,6 +21,7 @@ void UFishTrait::BuildTemplate(FMassEntityTemplateBuildContext& BuildContext, co
 	MoveFragment.SpeedChangeInterval = SpeedChangeInterval;
 	MoveFragment.MinSwimSpeed = MinSpeed;
 	MoveFragment.MaxSwimSpeed = MaxSpeed;
+	MoveFragment.FreezeDistance = FreezeDistance;
 
 	// 对齐碎片（邻居鱼平均速度）
 	FFishAlignFragment& AlignFragment = BuildContext.AddFragment_GetRef<FFishAlignFragment>();

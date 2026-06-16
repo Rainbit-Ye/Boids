@@ -7,6 +7,7 @@
 #include "MassNavigationFragments.h"
 #include "MassMovementFragments.h"
 #include "Engine/World.h"
+#include "GameFramework/Pawn.h"
 #include "MyDemo/Boids/FishGridSubsystem.h"
 #include "MyDemo/Boids/FunctionLibrary/BoidsFunction.h"
 
@@ -37,6 +38,10 @@ void UFishAlignProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	const float DeltaTime = Context.GetDeltaTimeSeconds();
 	UFishGridSubsystem* Grid = World->GetSubsystem<UFishGridSubsystem>();
 
+	// === 获取玩家 Pawn，供距离冻结判断 ===
+	APawn* PlayerPawn = World->GetFirstPlayerController() ? World->GetFirstPlayerController()->GetPawn() : nullptr;
+	const FVector PawnLocation = PlayerPawn ? PlayerPawn->GetActorLocation() : FVector::ZeroVector;
+
 	// 循环外复用 TArray，避免每鱼每帧堆分配
 	TArray<FKNNResult> ScratchNeighbors;
 	TArray<FVector> ScratchSampleDirs;
@@ -55,12 +60,32 @@ void UFishAlignProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		for (int32 i = 0; i < Count; i++)
 		{
 			FFishMoveFragment& Fish = Fishes[i];
+
+			// === 距离冻结检查：超出距离即停止游动 ===
+			const FVector Pos = Transforms[i].GetMutableTransform().GetLocation();
+			const float DistSq = FVector::DistSquared(Pos, PawnLocation);
+			const float FreezeDistSq = FMath::Square(Fish.FreezeDistance);
+
+			if (DistSq > FreezeDistSq)
+			{
+				Fish.bIsFrozen = true;
+			}
+			else
+			{
+				Fish.bIsFrozen = false;
+			}
+
+			// 冻结中：跳过所有行为计算，保持位置不变
+			if (Fish.bIsFrozen)
+			{
+				continue;
+			}
+
 			FFishAlignFragment& Align = Aligns[i];
 			FFishCohesionFragment& Cohesion = Cohesions[i];
 			FFishSeparationFragment& Separation = Separations[i];
 			FTransform& XForm = Transforms[i].GetMutableTransform();
 
-			const FVector Pos = XForm.GetLocation();
 			const FVector Forward = Fish.ForwardDir.GetSafeNormal();
 			const float SwimSpeed = Fish.SwimSpeed;
 
