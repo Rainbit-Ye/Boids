@@ -8,7 +8,7 @@
 #include "Engine/StreamableManager.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogGrid, Log, All);
-/** 3x3x3 邻居偏移量 — 保证 CellSize ≥ 搜索半径时球体查询不遗漏对角方向的实体 */
+/** 3x3x3 邻居偏移量 — 固定 27 格邻域遍历 */
 static const FIntVector GNeighbors[27] =
 {
 	{-1,-1,-1}, {-1,-1,0}, {-1,-1,1},
@@ -46,11 +46,6 @@ void UFishGridSubsystem::OnLoadDataAssetCompleted()
 {
 	const FSoftObjectPath SandboxConfigPath = FSoftObjectPath(TEXT("/Game/DataTable/DA_GridConfig.DA_GridConfig"));
 	Config = Cast<UFishGridConfig>(SandboxConfigPath.TryLoad());
-	
-	if (!Config)
-	{
-		return;
-	}
 }
 
 void UFishGridSubsystem::Clear()
@@ -104,6 +99,12 @@ void UFishGridSubsystem::BuildGrid()
 	}
 
 	GridCellSize = Config->CellSize;
+
+	// 缓存 Boids 权重到自身成员，防止 TSoftObjectPtr 被 GC 后 Config 变空
+	AvoidWeight = Config->AvoidWeight;
+	AlignWeight = Config->AlignWeight;
+	CohesionWeight = Config->CohesionWeight;
+	SeparationWeight = Config->SeparationWeight;
 
 	// 扩展边距，确保查询时 Cell 外扩不会越界
 	const float Margin = GridCellSize * 2.f;
@@ -171,7 +172,7 @@ const FGridCell* UFishGridSubsystem::GetCellInfo(int32 CellIdx) const
 }
 
 
-void UFishGridSubsystem::ForEntitiesInSphere(const FVector& Center, float RadiusSq,
+void UFishGridSubsystem::ForEntitiesInNeighborCells(const FVector& Center,
 	TFunctionRef<void(const FFishEntity& Entity, float DistSq)> Callback) const
 {
 	if (Cells.Num() == 0) return;
@@ -190,22 +191,19 @@ void UFishGridSubsystem::ForEntitiesInSphere(const FVector& Center, float Radius
 			const FFishEntity* Entity = EntityCellMap.Find(FishID);
 			if (!Entity) continue;
 			const float DistSq = FVector::DistSquared(Entity->Position, Center);
-			if (DistSq <= RadiusSq)
-				Callback(*Entity, DistSq);
+			Callback(*Entity, DistSq);
 		}
 	}
 }
 
 // ---- KNN 查询 ----
 
-void UFishGridSubsystem::QueryKNN(const FVector& Center, float Radius, int32 K, FGuid ExcludeID, TArray<FKNNResult>& OutResults) const
+void UFishGridSubsystem::QueryKNN(const FVector& Center, int32 K, FGuid ExcludeID, TArray<FKNNResult>& OutResults) const
 {
 	OutResults.Reset();
 	if (K <= 0) return;
 
-	const float RadiusSq = Radius * Radius;
-
-	ForEntitiesInSphere(Center, RadiusSq, [&](const FFishEntity& Entity, float DistSq)
+	ForEntitiesInNeighborCells(Center, [&](const FFishEntity& Entity, float DistSq)
 	{
 		if (Entity.FishID == ExcludeID) return;
 

@@ -21,7 +21,6 @@ struct FFishBoidConfigSharedFragment : public FMassSharedFragment
 	float FreezeDistance = 5000.f;    // 冻结距离
 
 	// ----- Align 配置 -----
-	float AlignRadius = 500.f;
 	int32 AlignMaxNeighbors = 5;
 	float AlignWeight = 0.8f;
 	float MaxSteeringForce = 300.f;
@@ -29,20 +28,13 @@ struct FFishBoidConfigSharedFragment : public FMassSharedFragment
 	TEnumAsByte<ECollisionChannel> AvoidCollisionChannel = ECC_WorldStatic;
 
 	// ----- Cohesion 配置 -----
-	float CohesionRadius = 600.f;
 	int32 CohesionMaxNeighbors = 8;
 	float CohesionWeight = 0.3f;
-	float CohesionMaxTurnAngle = 180.f;
 
 	// ----- Separation 配置 -----
-	float SeparationRadius = 150.f;
 	float SeparationStrength = 0.5f;
 	int32 SeparationMaxNeighbors = 10;
 };
-
-// ============================================================
-// Per-Entity Fragments — 每只鱼自己独有的运行时数据
-// ============================================================
 
 USTRUCT()
 struct FFishEntityFragment : public FMassFragment
@@ -63,11 +55,13 @@ struct FFishMoveFragment : public FMassFragment
 
 public:
 	FGuid EntityID;
+	FVector ForwardDir = FVector::ZeroVector; // 当前朝向// 是否冻结
+	
 	float SwimSpeed = 300.f;                  // 运行时游速（每鱼随机）
 	float TimeSinceLastDirChange = 0.f;       // 距离上次转向已过的秒数
-	FVector ForwardDir = FVector::ZeroVector; // 当前朝向
 	float TimeSinceLastSpeedChange = 0.f;     // 距离上次变速已过的秒数
-	bool bIsFrozen = false;                   // 是否冻结
+	bool bIsFrozen = false;
+
 };
 
 USTRUCT()

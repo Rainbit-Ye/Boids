@@ -78,6 +78,12 @@ public:
 	/** 网格是否已通过构建完毕 */
 	bool IsGridBuilt() const { return bGridBuilt; }
 
+	// ---- 从 Config 缓存的 Boids 权重（BuildGrid 时拷贝，避免 TSoftObjectPtr 被 GC 后丢失） ----
+	float AvoidWeight = 0.15f;
+	float AlignWeight = 0.35f;
+	float CohesionWeight = 0.25f;
+	float SeparationWeight = 0.25f;
+
 	// ---- 构建 ----
 
 	/** 清空所有数据（含实体数组），仅在 Deinitialize 或完全重建时使用 */
@@ -103,8 +109,8 @@ public:
 	/** 获取指定 Cell 的信息（FishIDs 列表），返回 nullptr 表示不存在 */
 	const FGridCell* GetCellInfo(int32 CellIdx) const;
 	
-	/** K 近邻查询：返回半径内距离最近的 K 个邻居（含位置和朝向） */
-	void QueryKNN(const FVector& Center, float Radius, int32 K, FGuid ExcludeID, TArray<FKNNResult>& OutResults) const;
+	/** K 近邻查询：返回 3x3x3 邻域内距离最近的 K 个邻居（含位置和朝向） */
+	void QueryKNN(const FVector& Center, int32 K, FGuid ExcludeID, TArray<FKNNResult>& OutResults) const;
 	
 	UFUNCTION(BlueprintCallable)
 	int32 GetEntityCount() const { return EntityCellMap.Num(); }
@@ -120,8 +126,8 @@ protected:
 	/** 将世界坐标转换为网格 Cell Index */
 	int32 WorldToCell(const FVector& WorldPos) const;
 
-	/** 遍历中心点所在 Cell 及其 27 个相邻格（3x3x3），对实体距离筛选后回调（直接传 Entity 指针，避免回调内二次查 Map） */
-	void ForEntitiesInSphere(const FVector& Center, float RadiusSq, TFunctionRef<void(const FFishEntity& Entity, float DistSq)> Callback) const;
+	/** 遍历中心点所在 Cell 及其 27 个相邻格（3x3x3），回调所有实体（直接传 Entity 指针，避免回调内二次查 Map） */
+	void ForEntitiesInNeighborCells(const FVector& Center, TFunctionRef<void(const FFishEntity& Entity, float DistSq)> Callback) const;
 
 private:
 

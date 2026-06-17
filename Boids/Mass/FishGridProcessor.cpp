@@ -32,7 +32,10 @@ void UFishGridProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 {
 	UWorld* World = GetWorld();
 	UFishGridSubsystem* Grid = World ? World->GetSubsystem<UFishGridSubsystem>() : nullptr;
-	if (!Grid || !Grid->IsInitialized()) return;
+	if (!Grid || !Grid->IsInitialized())
+	{
+		return;
+	}
 
 	// ---- 一次性：从 Subsystem 自身的 DataAsset 配置初始化网格 ----
 	if (!Grid->IsGridBuilt())

@@ -17,19 +17,14 @@ static void HashShuffle(TArray<FVector>& Array, uint32 Seed)
 	}
 }
 
-// ==================== 内部 Helper（接收已查询的邻居列表，避免重复 KNN） ====================
-// 注意：这些函数返回纯目标方向（不再内部混合 Forward），外部在 Processor 中统一加权混合
-
 static FVector AlignFromNeighbors(const TArray<FKNNResult>& Neighbors, const FVector& Forward,
-	float Radius, int32 MaxNeighbors)
+	int32 MaxNeighbors)
 {
-	const float RadiusSq = Radius * Radius;
 	FVector AvgDir = FVector::ZeroVector;
 	int32 Count = 0;
 	for (const FKNNResult& N : Neighbors)
 	{
 		if (Count >= MaxNeighbors) break;
-		if (N.DistanceSq > RadiusSq) continue;  // 按该行为的半径过滤
 		AvgDir += N.ForwardDir.GetSafeNormal();
 		Count++;
 	}
@@ -38,15 +33,13 @@ static FVector AlignFromNeighbors(const TArray<FKNNResult>& Neighbors, const FVe
 }
 
 static FVector CohesionFromNeighbors(const TArray<FKNNResult>& Neighbors, const FVector& Pos,
-	const FVector& Forward, float Radius, int32 MaxNeighbors)
+	const FVector& Forward, int32 MaxNeighbors)
 {
-	const float RadiusSq = Radius * Radius;
 	FVector CenterOfMass = FVector::ZeroVector;
 	int32 Count = 0;
 	for (const FKNNResult& N : Neighbors)
 	{
 		if (Count >= MaxNeighbors) break;
-		if (N.DistanceSq > RadiusSq) continue;  // 按该行为的半径过滤
 		CenterOfMass += N.Position;
 		Count++;
 	}
@@ -61,15 +54,13 @@ static FVector CohesionFromNeighbors(const TArray<FKNNResult>& Neighbors, const 
 }
 
 static FVector SeparationFromNeighbors(const TArray<FKNNResult>& Neighbors, const FVector& Pos,
-	const FVector& Forward, float Radius, int32 MaxNeighbors)
+	const FVector& Forward, int32 MaxNeighbors)
 {
-	const float RadiusSq = Radius * Radius;
 	FVector Repulsion = FVector::ZeroVector;
 	int32 Count = 0;
 	for (const FKNNResult& N : Neighbors)
 	{
 		if (Count >= MaxNeighbors) break;
-		if (N.DistanceSq > RadiusSq) continue;  // 按该行为的半径过滤
 		Count++;
 
 		const FVector ToNeighbor = N.Position - Pos;
@@ -93,9 +84,9 @@ static FVector SeparationFromNeighbors(const TArray<FKNNResult>& Neighbors, cons
 void UBoidsFunction::ComputeAllBoidsForces(
 	const UObject* WorldContextObject,
 	const FVector& Pos, const FVector& Forward, const FGuid& EntityID,
-	float AlignRadius, int32 AlignMaxNeighbors, float AlignWeight,
-	float CohesionRadius, int32 CohesionMaxNeighbors, float CohesionWeight, float CohesionMaxTurnAngle,
-	float SepRadius, int32 SepMaxNeighbors, float SepStrength,
+	int32 AlignMaxNeighbors,
+	int32 CohesionMaxNeighbors,
+	int32 SepMaxNeighbors,
 	FVector& OutAlign, FVector& OutCohesion, FVector& OutSeparation,
 	TArray<FKNNResult>& ScratchNeighbors)
 {
@@ -106,18 +97,23 @@ void UBoidsFunction::ComputeAllBoidsForces(
 	OutCohesion  = Forward;
 	OutSeparation = Forward;
 
-	if (!Grid || Grid->GetEntityCount() <= 1) return;
+	if (!Grid || Grid->GetEntityCount() <= 1)
+	{
+		return;
+	}
 
-	const float MaxRadius = FMath::Max3(AlignRadius, CohesionRadius, SepRadius);
 	const int32 MaxNeighbors = FMath::Max3(AlignMaxNeighbors, CohesionMaxNeighbors, SepMaxNeighbors);
 
-	Grid->QueryKNN(Pos, MaxRadius, MaxNeighbors, EntityID, ScratchNeighbors);
-	if (ScratchNeighbors.Num() == 0) return;
+	Grid->QueryKNN(Pos, MaxNeighbors, EntityID, ScratchNeighbors);
+	if (ScratchNeighbors.Num() == 0)
+	{
+		return;
+	}
 
 	// 各行为返回纯目标方向（不再内部混合 Forward），由 Processor 统一加权
-	OutAlign     = AlignFromNeighbors(ScratchNeighbors, Forward, AlignRadius, AlignMaxNeighbors);
-	OutCohesion  = CohesionFromNeighbors(ScratchNeighbors, Pos, Forward, CohesionRadius, CohesionMaxNeighbors);
-	OutSeparation = SeparationFromNeighbors(ScratchNeighbors, Pos, Forward, SepRadius, SepMaxNeighbors);
+	OutAlign     = AlignFromNeighbors(ScratchNeighbors, Forward, AlignMaxNeighbors);
+	OutCohesion  = CohesionFromNeighbors(ScratchNeighbors, Pos, Forward, CohesionMaxNeighbors);
+	OutSeparation = SeparationFromNeighbors(ScratchNeighbors, Pos, Forward, SepMaxNeighbors);
 }
 
 

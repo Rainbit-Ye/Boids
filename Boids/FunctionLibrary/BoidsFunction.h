@@ -17,9 +17,9 @@ public:
 	static void ComputeAllBoidsForces(
 		const UObject* WorldContextObject,
 		const FVector& Pos, const FVector& Forward, const FGuid& EntityID,
-		float AlignRadius, int32 AlignMaxNeighbors, float AlignWeight,
-		float CohesionRadius, int32 CohesionMaxNeighbors, float CohesionWeight, float CohesionMaxTurnAngle,
-		float SepRadius, int32 SepMaxNeighbors, float SepStrength,
+		int32 AlignMaxNeighbors,
+		int32 CohesionMaxNeighbors,
+		int32 SepMaxNeighbors,
 		FVector& OutAlign, FVector& OutCohesion, FVector& OutSeparation,
 		TArray<FKNNResult>& ScratchNeighbors);
 	

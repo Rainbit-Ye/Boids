@@ -25,13 +25,10 @@ void UFishTrait::BuildTemplate(FMassEntityTemplateBuildContext& BuildContext, co
 	ConfigData.MinSwimSpeed           = MinSpeed;
 	ConfigData.MaxSwimSpeed           = MaxSpeed;
 	ConfigData.FreezeDistance         = FreezeDistance;
-	ConfigData.AlignRadius            = FishRadiusToAlign;
 	ConfigData.AlignMaxNeighbors      = NeighborCount;
 	ConfigData.AlignWeight            = AlignWeight;
-	ConfigData.CohesionRadius         = FishRadiusToCohesion;
 	ConfigData.CohesionMaxNeighbors   = NeighborCohesionCount;
 	ConfigData.CohesionWeight         = CohesionWeight;
-	ConfigData.SeparationRadius       = FishRadiusToSeparation;
 	ConfigData.SeparationMaxNeighbors = NeighborSeparationCount;
 
 	const uint32 ConfigHash = UE::StructUtils::GetStructCrc32(FConstStructView::Make(ConfigData));

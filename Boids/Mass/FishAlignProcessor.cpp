@@ -86,19 +86,19 @@ void UFishAlignProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			UBoidsFunction::ComputeAllBoidsForces(
 				World,
 				Pos, Forward, Fish.EntityID,
-				CFG.AlignRadius, CFG.AlignMaxNeighbors, CFG.AlignWeight,
-				CFG.CohesionRadius, CFG.CohesionMaxNeighbors, CFG.CohesionWeight, CFG.CohesionMaxTurnAngle,
-				CFG.SeparationRadius, CFG.SeparationMaxNeighbors, CFG.SeparationStrength,
+				CFG.AlignMaxNeighbors,
+				CFG.CohesionMaxNeighbors,
+				CFG.SeparationMaxNeighbors,
 				AlignTarget, CohesionTarget, SepTarget,
 				ScratchNeighbors);
 
 			FVector BoidsDir = Forward;
-			if (Grid->Config)
+			if (Grid->IsGridBuilt())
 			{
-				BoidsDir = Forward * Grid->Config->AvoidWeight
-					+ AlignTarget    * Grid->Config->AlignWeight
-					+ CohesionTarget * Grid->Config->CohesionWeight
-					+ SepTarget      * Grid->Config->SeparationWeight;
+				BoidsDir = Forward * Grid->AvoidWeight
+					+ AlignTarget    * Grid->AlignWeight
+					+ CohesionTarget * Grid->CohesionWeight
+					+ SepTarget      * Grid->SeparationWeight;
 				BoidsDir.Normalize();
 			}
 
@@ -162,4 +162,5 @@ void UFishAlignProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			XForm.SetLocation(Pos + SwimDir * SwimSpeed * DeltaTime);
 		}
 	});
+	
 }
