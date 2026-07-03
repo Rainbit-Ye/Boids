@@ -14,10 +14,14 @@ UCLASS()
 class MYDEMO_API AMyPlayerState : public APlayerState
 {
 	GENERATED_BODY()
-	UAbilitySystemComponent* AbilitySystemComponent;
-	FGameplayTag tag;
-	FGameplayAttribute Attribute;
-	UGameplayAbility* Ability;
+public:
+	void OnConstruction(const FTransform& Transform) override;
+	void BeginPlay() override;
+
+	UFUNCTION()
+	UAbilitySystemComponent* GetASC() const { return AbilitySystemComponent; }
 
 private:
+	UPROPERTY()
+	UAbilitySystemComponent* AbilitySystemComponent;
 };
