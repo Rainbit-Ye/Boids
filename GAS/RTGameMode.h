@@ -4,15 +4,15 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
-#include "MyDemoGameMode.generated.h"
+#include "RTGameMode.generated.h"
 
 UCLASS(minimalapi)
-class AMyDemoGameMode : public AGameModeBase
+class ARTGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
 
 public:
-	AMyDemoGameMode();
+	ARTGameMode();
 };
 
 

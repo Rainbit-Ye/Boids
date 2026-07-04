@@ -18,9 +18,22 @@ public:
 	APlayerCharacterController();
 
 	virtual void BeginPlay() override;
-
+	virtual void SetupInputComponent() override;
+private:
+	void Move(const FInputActionValue& Value);
+	void Look(const FInputActionValue& Value);
+	void Jump();
+	void StopJumping();
 private:
 	UPROPERTY(EditAnywhere,Category="Input")
 	TObjectPtr<UInputMappingContext> InputMappingContext;
-	
+
+	UPROPERTY(EditAnywhere,Category="Input")
+	TObjectPtr<UInputAction> MoveAction;
+
+	UPROPERTY(EditAnywhere,Category="Input")
+	TObjectPtr<UInputAction> LookAction;
+
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* JumpAction;
 };
