@@ -3,10 +3,12 @@
 
 #include "PlayerCharacter.h"
 
+#include "RTPlayerState.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "UI/RTHUD.h"
 
 
 APlayerCharacter::APlayerCharacter()
@@ -48,20 +50,39 @@ APlayerCharacter::APlayerCharacter()
 
 }
 
-void APlayerCharacter::BeginPlay()
+void APlayerCharacter::PossessedBy(AController* NewController)
 {
-	Super::BeginPlay();
+	Super::PossessedBy(NewController);
+	// 初始化Ability到服务器
+	InitAbilityInfo();
+}
+
+void APlayerCharacter::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+	// 初始化Ability到客户端
+	InitAbilityInfo();
+}
+
+
+void APlayerCharacter::InitAbilityInfo()
+{
+	ARTPlayerState* RTPlayerState = GetPlayerState<ARTPlayerState>();
 	
-}
-
-void APlayerCharacter::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-}
-
-// Called to bind functionality to input
-void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
+	check(RTPlayerState)
+	AbilitySystemComponent = RTPlayerState->GetAbilitySystemComponent();
+	AttributeSet = RTPlayerState->GetAttributeSet();
+	
+	check(AbilitySystemComponent)
+	AbilitySystemComponent->InitAbilityActorInfo(RTPlayerState, this);
+	
+	if (APlayerController* RTPlayerController = Cast<APlayerController>(GetController()))
+	{
+		if (ARTHUD* HUD = Cast<ARTHUD>(RTPlayerController->GetHUD()))
+		{
+			HUD->InitOverlayWidget(RTPlayerController,RTPlayerState, AbilitySystemComponent, AttributeSet);
+		}
+	}
+	
 }
 

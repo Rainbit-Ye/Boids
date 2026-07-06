@@ -16,11 +16,14 @@ class MYDEMO_API APlayerCharacter : public ACharacterBase
 
 public:
 	APlayerCharacter();
-
+	//玩家 / AI 控制器绑定到角色身上的回调(客户端收到复制过来的 PlayerState 后触发),跑服务器
+	virtual void PossessedBy(AController* NewController) override;
+	//客户端收到服务器同步过来的 PlayerState 指针，跑客户端
+	virtual void OnRep_PlayerState() override;
 protected:
-	virtual void BeginPlay() override;
-	virtual void Tick(float DeltaTime) override;
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
+private:
+	void InitAbilityInfo();
 public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
