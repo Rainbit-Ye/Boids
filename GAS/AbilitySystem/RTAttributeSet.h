@@ -63,6 +63,22 @@ public:
 	virtual void PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData& Data) override;
 	
 	void SetEffectProperty(const struct FGameplayEffectModCallbackData& Data,FEffectProperty& InEffectProperty) const;
+
+	UPROPERTY(BlueprintReadOnly,ReplicatedUsing = OnRep_Attack,Category="Primary Attributes")
+	FGameplayAttributeData Attack;
+	ATTRIBUTE_ACCESSORS(URTAttributeSet, Attack)
+
+	UPROPERTY(BlueprintReadOnly,ReplicatedUsing = OnRep_Defence,Category="Primary Attributes")
+	FGameplayAttributeData Defence;
+	ATTRIBUTE_ACCESSORS(URTAttributeSet, Defence)
+
+	UPROPERTY(BlueprintReadOnly,ReplicatedUsing = OnRep_CriticalRate,Category="Primary Attributes")
+	FGameplayAttributeData 	CriticalRate;
+	ATTRIBUTE_ACCESSORS(URTAttributeSet, CriticalRate)
+
+	UPROPERTY(BlueprintReadOnly,ReplicatedUsing = OnRep_CriticalHit,Category="Primary Attributes")
+	FGameplayAttributeData 	CriticalHit;
+	ATTRIBUTE_ACCESSORS(URTAttributeSet, CriticalHit)
 	
 	//是服务器把数据同步下发给客户端
 	//Replicated 基础标记
@@ -86,6 +102,19 @@ public:
 	ATTRIBUTE_ACCESSORS(URTAttributeSet, MaxMana)
 	
 public:
+	UFUNCTION()
+	void OnRep_Attack(const FGameplayAttributeData& OldAttack) const;
+
+	UFUNCTION()
+	void OnRep_Defence(const FGameplayAttributeData& OldDefence) const;
+
+	UFUNCTION()
+	void OnRep_CriticalRate(const FGameplayAttributeData& OldCriticalRate) const;
+
+	UFUNCTION()
+	void OnRep_CriticalHit(const FGameplayAttributeData& OldCriticalHit) const;
+
+	
 	UFUNCTION()
 	void OnRep_Health(const FGameplayAttributeData& OldHealth) const;
 

@@ -6,22 +6,20 @@
 #include "AbilitySystemComponent.h"
 #include "RTAbilitySystemComponent.generated.h"
 
-
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnEffectAppliedToSelf, const FGameplayTagContainer& GameplayTagContainer);
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class MYDEMO_API URTAbilitySystemComponent : public UAbilitySystemComponent
 {
 	GENERATED_BODY()
-
+public:
+	FOnEffectAppliedToSelf OnGameplayEffectTags;
 public:
 	// Sets default values for this component's properties
 	URTAbilitySystemComponent();
-
+	
+	void AbilityActorInfoSet();
 protected:
-	// Called when the game starts
-	virtual void BeginPlay() override;
-
+	
+	void OnEffectAppliedToSelf(UAbilitySystemComponent* AbilitySystemComponent, const FGameplayEffectSpec& GameplayEffectSpec, FActiveGameplayEffectHandle ActiveGameplayEffectHandle);
 public:
-	// Called every frame
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType,
-	                           FActorComponentTickFunction* ThisTickFunction) override;
 };

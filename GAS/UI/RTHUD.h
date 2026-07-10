@@ -29,7 +29,7 @@ public:
 
 
 private:
-	UPROPERTY()
+	UPROPERTY(EditAnywhere)
 	TObjectPtr<UOverlapWidgetController> OverlapWidgetController;
 	
 	UPROPERTY(EditAnywhere)

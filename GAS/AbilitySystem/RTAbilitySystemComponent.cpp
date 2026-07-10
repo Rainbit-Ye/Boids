@@ -3,34 +3,22 @@
 
 #include "RTAbilitySystemComponent.h"
 
-
-// Sets default values for this component's properties
 URTAbilitySystemComponent::URTAbilitySystemComponent()
 {
-	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
-	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true;
-
-	// ...
 }
 
-
-// Called when the game starts
-void URTAbilitySystemComponent::BeginPlay()
+void URTAbilitySystemComponent::AbilityActorInfoSet()
 {
-	Super::BeginPlay();
-
-	// ...
-	
+	OnGameplayEffectAppliedDelegateToSelf.AddUObject(this,&URTAbilitySystemComponent::OnEffectAppliedToSelf);
 }
 
-
-// Called every frame
-void URTAbilitySystemComponent::TickComponent(float DeltaTime, ELevelTick TickType,
-                                               FActorComponentTickFunction* ThisTickFunction)
+void URTAbilitySystemComponent::OnEffectAppliedToSelf(UAbilitySystemComponent* AbilitySystemComponent,
+	const FGameplayEffectSpec& GameplayEffectSpec, FActiveGameplayEffectHandle ActiveGameplayEffectHandle)
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	// ...
+	FGameplayTagContainer Tags;
+	GameplayEffectSpec.GetAllAssetTags(Tags);
+	OnGameplayEffectTags.Broadcast(Tags);
 }
+
 

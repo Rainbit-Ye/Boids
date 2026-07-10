@@ -20,10 +20,11 @@ public:
 	virtual void PossessedBy(AController* NewController) override;
 	//客户端收到服务器同步过来的 PlayerState 指针，跑客户端
 	virtual void OnRep_PlayerState() override;
-protected:
 
+protected:
+	virtual void InitAbilityInfo() override;
 private:
-	void InitAbilityInfo();
+	
 public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))

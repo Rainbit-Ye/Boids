@@ -3,6 +3,7 @@
 
 #include "OverlapWidgetController.h"
 
+#include "MyDemo/GAS/AbilitySystem/RTAbilitySystemComponent.h"
 #include "MyDemo/GAS/AbilitySystem/RTAttributeSet.h"
 
 void UOverlapWidgetController::BroadcastInitValue()
@@ -32,6 +33,8 @@ void UOverlapWidgetController::BingValueChanged()
 
 	AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(RTAttributeSet->GetMaxManaAttribute())
 	.AddUObject(this, &UOverlapWidgetController::MaxManaValueChanged);
+
+	Cast<URTAbilitySystemComponent>(AbilitySystemComponent)->OnGameplayEffectTags.AddUObject(this,&UOverlapWidgetController::OnEffectAppliedToSelf );
 }
 
 void UOverlapWidgetController::HealthValueChanged(const FOnAttributeChangeData& Data) const
@@ -52,4 +55,18 @@ void UOverlapWidgetController::ManaValueChanged(const FOnAttributeChangeData& On
 void UOverlapWidgetController::MaxManaValueChanged(const FOnAttributeChangeData& OnAttributeChangeData) const
 {
 	OnMaxManaChanged.Broadcast(OnAttributeChangeData.NewValue);
+}
+
+void UOverlapWidgetController::OnEffectAppliedToSelf(const FGameplayTagContainer& Tags)
+{
+	for (const auto& Tag : Tags)
+	{
+		FGameplayTag MessageTag = FGameplayTag::RequestGameplayTag(TEXT("RT.UIMessage"));
+		if (Tag.MatchesTag(MessageTag)){
+			const FUIWidgetInfo* UIWidgetInfo = GetWidgetInfoByTag<FUIWidgetInfo>(WidgetInfo,Tag);
+			OnEffectTagApplied.Broadcast(*UIWidgetInfo);
+			UE_LOG(LogTemp,Warning,TEXT("OnEffectAppliedToSelf: %s"),*Tag.ToString())
+		}
+	}
+
 }

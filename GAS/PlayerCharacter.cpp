@@ -4,6 +4,7 @@
 #include "PlayerCharacter.h"
 
 #include "RTPlayerState.h"
+#include "AbilitySystem/RTAbilitySystemComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -72,7 +73,10 @@ void APlayerCharacter::InitAbilityInfo()
 	check(RTPlayerState)
 	AbilitySystemComponent = RTPlayerState->GetAbilitySystemComponent();
 	AttributeSet = RTPlayerState->GetAttributeSet();
-	
+	if (URTAbilitySystemComponent* RTAbilitySystemComponent = Cast<URTAbilitySystemComponent>(AbilitySystemComponent))
+	{
+		RTAbilitySystemComponent->AbilityActorInfoSet();
+	}
 	check(AbilitySystemComponent)
 	AbilitySystemComponent->InitAbilityActorInfo(RTPlayerState, this);
 	

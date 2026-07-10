@@ -25,14 +25,24 @@ AEnemyCharacter::AEnemyCharacter()
 void AEnemyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	check(AbilitySystemComponent);
-	AbilitySystemComponent->InitAbilityActorInfo(this, this);
+	InitAbilityInfo();
 }
 
 // Called every frame
 void AEnemyCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+}
+
+void AEnemyCharacter::InitAbilityInfo()
+{
+	Super::InitAbilityInfo();
+	check(AbilitySystemComponent);
+	AbilitySystemComponent->InitAbilityActorInfo(this, this);
+	if (URTAbilitySystemComponent* RTAbilitySystemComponent = Cast<URTAbilitySystemComponent>(AbilitySystemComponent))
+	{
+		RTAbilitySystemComponent->AbilityActorInfoSet();
+	}
 }
 
 // Called to bind functionality to input

@@ -16,6 +16,11 @@ URTAttributeSet::URTAttributeSet()
 void URTAttributeSet::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME_CONDITION_NOTIFY(URTAttributeSet, Attack, COND_None, REPNOTIFY_Always)
+	DOREPLIFETIME_CONDITION_NOTIFY(URTAttributeSet, Defence, COND_None, REPNOTIFY_Always)
+	DOREPLIFETIME_CONDITION_NOTIFY(URTAttributeSet, CriticalRate, COND_None, REPNOTIFY_Always)
+	DOREPLIFETIME_CONDITION_NOTIFY(URTAttributeSet, CriticalHit, COND_None, REPNOTIFY_Always)
+	
 	// 复制的属性，任何条件下都要进行通知，并且通知类型为Always（指定属性发生变化时，无论是否有变化，都会进行通知）
 	DOREPLIFETIME_CONDITION_NOTIFY(URTAttributeSet, Health, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(URTAttributeSet, MaxHealth, COND_None, REPNOTIFY_Always);
@@ -27,15 +32,6 @@ void URTAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, fl
 {
 	Super::PreAttributeChange(Attribute, NewValue);
 
-	if (Attribute == GetHealthAttribute())
-	{
-		NewValue = FMath::Clamp(NewValue, 0.0f, GetMaxHealth());
-	}
-	
-	if (Attribute == GetManaAttribute())
-	{
-		NewValue = FMath::Clamp(NewValue,0.0f,GetMaxMana());
-	}
 
 }
 
@@ -44,8 +40,40 @@ void URTAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffectModC
 	Super::PostGameplayEffectExecute(Data);
 	FEffectProperty EffectProperty;
 	SetEffectProperty(Data, EffectProperty);
+
+	
+	if (Data.EvaluatedData.Attribute == GetHealthAttribute())
+	{
+		SetHealth(FMath::Clamp(GetHealth(), 0.0f, GetMaxHealth()));
+	}
+	
+	if (Data.EvaluatedData.Attribute == GetManaAttribute())
+	{
+		SetMana(FMath::Clamp(GetMana(),0.0f,GetMaxMana()));
+	}
 }
 
+
+void URTAttributeSet::OnRep_Attack(const FGameplayAttributeData& OldAttack) const
+{
+	//旧值 → 新值
+	GAMEPLAYATTRIBUTE_REPNOTIFY(URTAttributeSet, Attack, OldAttack);
+}
+
+void URTAttributeSet::OnRep_Defence(const FGameplayAttributeData& OldDefence) const
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(URTAttributeSet, Defence, OldDefence);
+}
+
+void URTAttributeSet::OnRep_CriticalRate(const FGameplayAttributeData& OldCriticalRate) const
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(URTAttributeSet, CriticalRate, OldCriticalRate);
+}
+
+void URTAttributeSet::OnRep_CriticalHit(const FGameplayAttributeData& OldCriticalHit) const
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(URTAttributeSet, CriticalHit, OldCriticalHit);
+}
 
 void URTAttributeSet::OnRep_Health(const FGameplayAttributeData& OldHealth) const
 {

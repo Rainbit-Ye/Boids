@@ -11,6 +11,6 @@ public class MyDemo : ModuleRules
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", 
 			"EnhancedInput", "GameplayAbilities", "GameplayTasks", "GameplayTags", "StructUtils", "MassEntity", 
 			"MassCommon", "MassSpawner", "MassMovement", "MassLOD", 
-			"MassRepresentation", "MassNavigation", "MassSimulation","AnimToTexture", "UMG" });
+			"MassRepresentation", "MassNavigation", "MassSimulation","AnimToTexture", "UMG", "SlateCore" });
 	}
 }

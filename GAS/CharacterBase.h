@@ -21,6 +21,8 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	virtual void InitAbilityInfo(){}
+	
 	UAttributeSet* GetAttributeSet() const {return AttributeSet;}
 
 	UPROPERTY(EditAnywhere,Category="Combat")
