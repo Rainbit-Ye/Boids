@@ -24,6 +24,8 @@ private:
 	void Look(const FInputActionValue& Value);
 	void Jump();
 	void StopJumping();
+	void ShowMouse(const FInputActionValue& Value);
+	void HideMouse(const FInputActionValue& Value);
 private:
 	UPROPERTY(EditAnywhere,Category="Input")
 	TObjectPtr<UInputMappingContext> InputMappingContext;
@@ -35,5 +37,8 @@ private:
 	TObjectPtr<UInputAction> LookAction;
 
 	UPROPERTY(EditAnywhere, Category = "Input")
-	UInputAction* JumpAction;
+	TObjectPtr<UInputAction> JumpAction;
+
+	UPROPERTY(EditAnywhere, Category = "Input")
+	TObjectPtr<UInputAction> ToggleMouseAction;
 };

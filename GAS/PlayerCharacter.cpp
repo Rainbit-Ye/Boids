@@ -65,6 +65,15 @@ void APlayerCharacter::OnRep_PlayerState()
 	InitAbilityInfo();
 }
 
+int32 APlayerCharacter::GetCharacterLevel()
+{
+	if (ARTPlayerState* RTPlayerState = GetPlayerState<ARTPlayerState>())
+	{
+		return RTPlayerState->GetCharacterLevel();
+	}
+	return 0;
+}
+
 
 void APlayerCharacter::InitAbilityInfo()
 {
@@ -80,6 +89,8 @@ void APlayerCharacter::InitAbilityInfo()
 	check(AbilitySystemComponent)
 	AbilitySystemComponent->InitAbilityActorInfo(RTPlayerState, this);
 	
+	InitAttributeEffect();
+
 	if (APlayerController* RTPlayerController = Cast<APlayerController>(GetController()))
 	{
 		if (ARTHUD* HUD = Cast<ARTHUD>(RTPlayerController->GetHUD()))
@@ -87,6 +98,5 @@ void APlayerCharacter::InitAbilityInfo()
 			HUD->InitOverlayWidget(RTPlayerController,RTPlayerState, AbilitySystemComponent, AttributeSet);
 		}
 	}
-	
 }
 

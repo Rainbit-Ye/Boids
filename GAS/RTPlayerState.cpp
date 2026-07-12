@@ -5,6 +5,7 @@
 
 #include "AbilitySystem/RTAbilitySystemComponent.h"
 #include "AbilitySystem/RTAttributeSet.h"
+#include "Net/UnrealNetwork.h"
 
 ARTPlayerState::ARTPlayerState()
 {
@@ -20,4 +21,17 @@ ARTPlayerState::ARTPlayerState()
 UAbilitySystemComponent* ARTPlayerState::GetAbilitySystemComponent() const
 {
 	return AbilitySystemComponent;
+}
+
+void ARTPlayerState::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ARTPlayerState,Level)
+	
+}
+
+
+void ARTPlayerState::OnRep_Level(int32 OldLevel)
+{
 }

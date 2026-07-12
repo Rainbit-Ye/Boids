@@ -3,15 +3,21 @@
 
 #include "RTHUD.h"
 
-UOverlapWidgetController* ARTHUD::GetOverlapWidgetController(const FWidgetControllerParams& WCParams)
+UOverlapWidgetController* ARTHUD::CreateOverlapWidgetController(const FWidgetControllerParams& WcParams)
 {
 	if (!OverlapWidgetController)
 	{
 		check(OverlapWidgetControllerClass);
 		OverlapWidgetController = NewObject<UOverlapWidgetController>(this, OverlapWidgetControllerClass);
-		OverlapWidgetController->SetWidgetControllerParams(WCParams);
+		OverlapWidgetController->SetWidgetControllerParams(WcParams);
 		OverlapWidgetController->BingValueChanged();
 	}
+	OverlapWidgetController->InitCharacterPanelController();
+	return OverlapWidgetController;
+}
+
+UOverlapWidgetController* ARTHUD::GetOverlapWidgetController()
+{
 	return OverlapWidgetController;
 }
 
@@ -21,14 +27,20 @@ void ARTHUD::InitOverlayWidget(APlayerController* PlayerController, APlayerState
 	check(OverlayWidgetClass);
 	if (UUserWidget* Widget = CreateWidget<UUserWidget>(GetWorld(), OverlayWidgetClass))
 	{
-		
 		const FWidgetControllerParams WCParams(PlayerController, PlayerState, AbilitySystemComponent, AttributeSet);
-		UOverlapWidgetController* WidgetController = GetOverlapWidgetController(WCParams);
+		UOverlapWidgetController* WidgetController = GetOverlapWidgetController();
+		if (!WidgetController)
+		{
+			WidgetController = CreateOverlapWidgetController(WCParams);
+		}
 
+		WidgetController->SetWidgetControllerParams(WCParams);
 		OverlayWidget = Cast<URTUserWidget>(Widget);
 		OverlayWidget->SetWidgetController(WidgetController);
 		WidgetController->BroadcastInitValue();
 
+
 		Widget->AddToViewport();
 	}
 }
+

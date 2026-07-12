@@ -7,6 +7,7 @@
 #include "AttributeSet.h"
 #include "GameplayEffectExtension.h"
 #include "MyDemo/GAS/PlayerCharacterController.h"
+#include "MyDemo/GAS/RTGameplayTags.h"
 #include "RTAttributeSet.generated.h"
 
 #define ATTRIBUTE_ACCESSORS(ClassName, PropertyName) \
@@ -14,6 +15,13 @@
 	GAMEPLAYATTRIBUTE_VALUE_GETTER(PropertyName) \
 	GAMEPLAYATTRIBUTE_VALUE_SETTER(PropertyName) \
 	GAMEPLAYATTRIBUTE_VALUE_INITTER(PropertyName)
+
+
+DECLARE_DELEGATE_RetVal(FGameplayAttribute,FAttributeChanged);
+// 将静态回调直接绑定为一个模板，方便书写
+template<class T>
+using TAttributeFunPtr = typename TBaseStaticDelegateInstance<T, FDefaultDelegateUserPolicy>::FFuncPtr;
+
 
 USTRUCT()
 struct FEffectProperty
@@ -61,9 +69,12 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
 	virtual void PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData& Data) override;
+
+	
 	
 	void SetEffectProperty(const struct FGameplayEffectModCallbackData& Data,FEffectProperty& InEffectProperty) const;
 
+	
 	UPROPERTY(BlueprintReadOnly,ReplicatedUsing = OnRep_Attack,Category="Primary Attributes")
 	FGameplayAttributeData Attack;
 	ATTRIBUTE_ACCESSORS(URTAttributeSet, Attack)
@@ -100,6 +111,20 @@ public:
 	UPROPERTY(BlueprintReadOnly,ReplicatedUsing = OnRep_MaxMana,Category="Vital Attributes")
 	FGameplayAttributeData MaxMana;
 	ATTRIBUTE_ACCESSORS(URTAttributeSet, MaxMana)
+
+	//穿透
+	UPROPERTY(BlueprintReadOnly,ReplicatedUsing = OnRep_Penetration ,Category="Vital Attributes")
+	FGameplayAttributeData Penetration;
+	ATTRIBUTE_ACCESSORS(URTAttributeSet,Penetration)
+	
+	//回血
+	UPROPERTY(BlueprintReadOnly,ReplicatedUsing = OnRep_LifeSteal ,Category="Vital Attributes")
+	FGameplayAttributeData LifeSteal;
+	ATTRIBUTE_ACCESSORS(URTAttributeSet, LifeSteal)
+
+	
+	
+	TMap<FGameplayTag,TAttributeFunPtr<FGameplayAttribute()>> TagsAttributes;
 	
 public:
 	UFUNCTION()
@@ -128,4 +153,9 @@ public:
 	void OnRep_MaxMana(const FGameplayAttributeData& OldMaxMana) const;
 
 
+	UFUNCTION()
+	void OnRep_Penetration(const FGameplayAttributeData& OldPenetration) const;
+
+	UFUNCTION()
+	void OnRep_LifeSteal(const FGameplayAttributeData& OldLifeSteal) const;
 };

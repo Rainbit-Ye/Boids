@@ -21,17 +21,10 @@ AEnemyCharacter::AEnemyCharacter()
 	AttributeSet = CreateDefaultSubobject<URTAttributeSet>(TEXT("AttributeSet"));
 }
 
-// Called when the game starts or when spawned
 void AEnemyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	InitAbilityInfo();
-}
-
-// Called every frame
-void AEnemyCharacter::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
 }
 
 void AEnemyCharacter::InitAbilityInfo()
@@ -45,9 +38,9 @@ void AEnemyCharacter::InitAbilityInfo()
 	}
 }
 
-// Called to bind functionality to input
-void AEnemyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+int AEnemyCharacter::GetCharacterLevel()
 {
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
+	return Level;
 }
+
 

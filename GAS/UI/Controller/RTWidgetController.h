@@ -4,8 +4,31 @@
 
 #include "CoreMinimal.h"
 #include "AbilitySystemComponent.h"
+#include "Engine/DataTable.h"
+#include "GameplayTagContainer.h"
 #include "UObject/Object.h"
 #include "RTWidgetController.generated.h"
+
+class URTUserWidget;
+
+USTRUCT()
+struct FUIWidgetInfo : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere,BlueprintReadOnly)
+	FGameplayTag Tag = FGameplayTag();
+
+	UPROPERTY(EditAnywhere,BlueprintReadOnly)
+	FText Message = FText();
+
+	UPROPERTY(EditAnywhere,BlueprintReadOnly)
+	TSubclassOf<URTUserWidget> WidgetClass;
+
+	UPROPERTY(EditAnywhere,BlueprintReadOnly)
+	TObjectPtr<UTexture2D> Image = nullptr;
+};
+
 USTRUCT(BlueprintType)
 struct FWidgetControllerParams
 {
@@ -35,6 +58,9 @@ class ARTPlayerState;
 /**
  * 
  */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAttributeValueChanged, float, AttributeValue);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnEffectTagApplied, const FUIWidgetInfo&, EffectTag);
+
 UCLASS()
 class MYDEMO_API URTWidgetController : public UObject
 {

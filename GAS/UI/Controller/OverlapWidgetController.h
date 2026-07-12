@@ -3,33 +3,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CharacterPanelController.h"
 #include "RTWidgetController.h"
 #include "OverlapWidgetController.generated.h"
 
-class URTUserWidget;
-
-USTRUCT()
-struct FUIWidgetInfo : public FTableRowBase
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere,BlueprintReadOnly)
-	FGameplayTag Tag = FGameplayTag();
-
-	UPROPERTY(EditAnywhere,BlueprintReadOnly)
-	FText Message = FText();
-
-	UPROPERTY(EditAnywhere,BlueprintReadOnly)
-	TSubclassOf<URTUserWidget> WidgetClass;
-
-	UPROPERTY(EditAnywhere,BlueprintReadOnly)
-	TObjectPtr<UTexture2D> Image = nullptr;
-};
 
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAttributeValueChanged, float, HealthValue);
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnEffectTagApplied, const FUIWidgetInfo&, EffectTag);
 UCLASS(BlueprintType,Blueprintable)
 class MYDEMO_API UOverlapWidgetController : public URTWidgetController
 {
@@ -45,10 +25,17 @@ public:
 	void ManaValueChanged(const FOnAttributeChangeData& OnAttributeChangeData) const;
 	void MaxManaValueChanged(const FOnAttributeChangeData& OnAttributeChangeData) const;
 
+	UFUNCTION()
+	UCharacterPanelController* GetCharacterPanelController();
+
+	// 由 HUD 在初始化流程中统一调用，负责创建并初始化 CharacterPanelController
+	UFUNCTION()
+	void InitCharacterPanelController();
 private:
 	void OnEffectAppliedToSelf(const FGameplayTagContainer& Tags);
 	template<typename T>
 	T* GetWidgetInfoByTag(UDataTable* DataTable,const FGameplayTag& Tag) const;
+
 public:
 	UPROPERTY(EditAnywhere)
 	TObjectPtr<UDataTable> WidgetInfo;
@@ -65,6 +52,12 @@ public:
 
 	UPROPERTY(BlueprintAssignable)
 	FOnEffectTagApplied OnEffectTagApplied;
+private:
+	UPROPERTY()
+	TObjectPtr<UCharacterPanelController> CharacterPanelController;
+
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<UCharacterPanelController> CharacterPanelControllerClass;
 };
 
 template <typename T>

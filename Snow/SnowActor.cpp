@@ -90,14 +90,15 @@ void ASnowActor::Draw()
 	FRotator PlayerRot;
 	
 	GetPlayerPosAndRot(PlayerUV,PlayerPos, PlayerRot);
-	
-	DrawRTFollowPlayer(PlayerPos);
 
 	BrushInfoArray.Empty();
 	if (BrushInfoDelegate.IsBound())
 	{
 		BrushInfoDelegate.Broadcast();
 	}
+	
+	DrawRTFollowPlayer(PlayerPos);
+
 	// 绘制平移
 	// 材质部分会把之前的save雪的轨迹存下来进行偏移
 	DrawTranslate();
@@ -200,7 +201,7 @@ void ASnowActor::CopyRT()
 		if (IsValid(Canvas)){
 			Canvas->K2_DrawTexture(SnowRT, FVector2D::ZeroVector,CanvasSize,
 				FVector2D::ZeroVector,FVector2D::UnitVector,
-				FLinearColor::White, EBlendMode::BLEND_Opaque,0,FVector2D(0.5,0.5));
+				FLinearColor::White, EBlendMode::BLEND_Translucent,0,FVector2D(0.5,0.5));
 		}
 	
 		UKismetRenderingLibrary::EndDrawCanvasToRenderTarget(this,Context);

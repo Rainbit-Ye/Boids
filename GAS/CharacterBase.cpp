@@ -3,6 +3,8 @@
 
 #include "CharacterBase.h"
 
+#include "AbilitySystemComponent.h"
+
 
 ACharacterBase::ACharacterBase()
 {
@@ -22,6 +24,24 @@ void ACharacterBase::BeginPlay()
 UAbilitySystemComponent* ACharacterBase::GetAbilitySystemComponent() const
 {
 	return AbilitySystemComponent;
+}
+
+void ACharacterBase::InitAttributeEffect() const
+{
+	ApplyGameplayEffectToSelf(PrimaryAttributeEffect,1);
+	ApplyGameplayEffectToSelf(SecondaryAttributeEffect,1);
+	ApplyGameplayEffectToSelf(VitalAttributeEffect,1);
+}
+
+void ACharacterBase::ApplyGameplayEffectToSelf(const TSubclassOf<UGameplayEffect>& GameplayEffectClass,int32 Level) const
+{
+	check(GameplayEffectClass)
+	FGameplayEffectContextHandle Handle = GetAbilitySystemComponent()->MakeEffectContext();
+	Handle.AddSourceObject(this);
+	const FGameplayEffectSpecHandle Spec = GetAbilitySystemComponent()->MakeOutgoingSpec(GameplayEffectClass,Level,Handle);
+	if (Spec.IsValid()){
+		AbilitySystemComponent->ApplyGameplayEffectSpecToTarget(*Spec.Data.Get(),GetAbilitySystemComponent());
+	}
 }
 
 

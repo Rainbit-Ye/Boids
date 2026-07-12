@@ -6,6 +6,7 @@
 #include "MyDemo/GAS/AbilitySystem/RTAbilitySystemComponent.h"
 #include "MyDemo/GAS/AbilitySystem/RTAttributeSet.h"
 
+
 void UOverlapWidgetController::BroadcastInitValue()
 {
 	URTAttributeSet* RTAttributeSet = Cast<URTAttributeSet>(this->AttributeSet);
@@ -15,6 +16,8 @@ void UOverlapWidgetController::BroadcastInitValue()
 
 	OnManaChanged.Broadcast(RTAttributeSet->GetMana());
 	OnMaxManaChanged.Broadcast(RTAttributeSet->GetMaxMana());
+	
+	CharacterPanelController->BroadcastInitValue();
 }
 
 void UOverlapWidgetController::BingValueChanged()
@@ -57,16 +60,38 @@ void UOverlapWidgetController::MaxManaValueChanged(const FOnAttributeChangeData&
 	OnMaxManaChanged.Broadcast(OnAttributeChangeData.NewValue);
 }
 
+UCharacterPanelController* UOverlapWidgetController::GetCharacterPanelController()
+{
+	if (CharacterPanelController)
+	{
+		return CharacterPanelController;
+	}
+	return nullptr;
+}
+
 void UOverlapWidgetController::OnEffectAppliedToSelf(const FGameplayTagContainer& Tags)
 {
 	for (const auto& Tag : Tags)
 	{
-		FGameplayTag MessageTag = FGameplayTag::RequestGameplayTag(TEXT("RT.UIMessage"));
+		FGameplayTag MessageTag = FGameplayTag::RequestGameplayTag(TEXT("RT"));
 		if (Tag.MatchesTag(MessageTag)){
 			const FUIWidgetInfo* UIWidgetInfo = GetWidgetInfoByTag<FUIWidgetInfo>(WidgetInfo,Tag);
 			OnEffectTagApplied.Broadcast(*UIWidgetInfo);
 			UE_LOG(LogTemp,Warning,TEXT("OnEffectAppliedToSelf: %s"),*Tag.ToString())
 		}
+	}
+
+}
+
+void UOverlapWidgetController::InitCharacterPanelController()
+{
+	if (!CharacterPanelController)
+	{
+		check(CharacterPanelControllerClass);
+		CharacterPanelController = NewObject<UCharacterPanelController>(this, CharacterPanelControllerClass);
+		const FWidgetControllerParams WCParams(PlayerController, PlayerState, AbilitySystemComponent, AttributeSet);
+		CharacterPanelController->SetWidgetControllerParams(WCParams);
+		CharacterPanelController->BingValueChanged();
 	}
 
 }

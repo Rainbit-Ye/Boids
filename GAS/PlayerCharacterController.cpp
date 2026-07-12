@@ -39,6 +39,8 @@ void APlayerCharacterController::SetupInputComponent()
 	EnhancedInputComponent->BindAction(LookAction,ETriggerEvent::Triggered,this,&APlayerCharacterController::Look);
 	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &APlayerCharacterController::Jump);
 	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &APlayerCharacterController::StopJumping);
+	EnhancedInputComponent->BindAction(ToggleMouseAction, ETriggerEvent::Started, this, &APlayerCharacterController::ShowMouse);
+	EnhancedInputComponent->BindAction(ToggleMouseAction, ETriggerEvent::Completed, this, &APlayerCharacterController::HideMouse);
 	
 }
 
@@ -84,4 +86,19 @@ void APlayerCharacterController::StopJumping()
 	{
 		MyChar->StopJumping();
 	}
+}
+
+void APlayerCharacterController::ShowMouse(const FInputActionValue& Value)
+{
+	bShowMouseCursor = true;
+	FInputModeGameAndUI InputMode;
+	InputMode.SetHideCursorDuringCapture(false);
+	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	SetInputMode(InputMode);
+}
+
+void APlayerCharacterController::HideMouse(const FInputActionValue& Value)
+{
+	bShowMouseCursor = false;
+	SetInputMode(FInputModeGameOnly());
 }

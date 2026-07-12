@@ -6,11 +6,12 @@
 
 URTAttributeSet::URTAttributeSet()
 {
-	InitHealth(100);
-	InitMaxHealth(100);
-
-	InitMana(50);
-	InitMaxMana(100);
+	const FRTGameplayTags RTGameplayTag = FRTGameplayTags::Get();
+	// 将Tag和属性对齐
+	TagsAttributes.Add(RTGameplayTag.AttackTag,GetAttackAttribute);
+	TagsAttributes.Add(RTGameplayTag.DefenceTag,GetDefenceAttribute);
+	TagsAttributes.Add(RTGameplayTag.CriticalRateTag,GetCriticalRateAttribute);
+	TagsAttributes.Add(RTGameplayTag.CriticalHitTag,GetCriticalHitAttribute);
 }
 
 void URTAttributeSet::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
@@ -26,6 +27,9 @@ void URTAttributeSet::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>
 	DOREPLIFETIME_CONDITION_NOTIFY(URTAttributeSet, MaxHealth, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(URTAttributeSet, Mana, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(URTAttributeSet, MaxMana, COND_None, REPNOTIFY_Always);
+
+	DOREPLIFETIME_CONDITION_NOTIFY(URTAttributeSet, Penetration, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(URTAttributeSet, LifeSteal, COND_None, REPNOTIFY_Always);
 }
 
 void URTAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
@@ -50,6 +54,11 @@ void URTAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffectModC
 	if (Data.EvaluatedData.Attribute == GetManaAttribute())
 	{
 		SetMana(FMath::Clamp(GetMana(),0.0f,GetMaxMana()));
+	}
+
+	if (Data.EvaluatedData.Attribute == GetCriticalRateAttribute())
+	{
+		SetCriticalRate(FMath::Clamp(GetCriticalRate(),0.0f,100.0f));
 	}
 }
 
@@ -95,8 +104,19 @@ void URTAttributeSet::OnRep_MaxMana(const FGameplayAttributeData& OldMaxMana) co
 	GAMEPLAYATTRIBUTE_REPNOTIFY(URTAttributeSet, MaxMana, OldMaxMana);
 }
 
+void URTAttributeSet::OnRep_Penetration(const FGameplayAttributeData& OldPenetration) const
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(URTAttributeSet, Penetration, OldPenetration);
+}
+
+void URTAttributeSet::OnRep_LifeSteal(const FGameplayAttributeData& OldLifeSteal) const
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(URTAttributeSet, LifeSteal, OldLifeSteal);
+}
+
+
 void URTAttributeSet::SetEffectProperty(const FGameplayEffectModCallbackData& Data,
-	FEffectProperty& InEffectProperty) const
+                                        FEffectProperty& InEffectProperty) const
 {
 	
 	const FGameplayEffectContextHandle GameplayEffectContext = Data.EffectSpec.GetContext();
